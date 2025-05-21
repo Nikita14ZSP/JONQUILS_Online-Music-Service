@@ -1,8 +1,16 @@
-start:
-	docker-compose up --build
+.PHONY: install-backend install-frontend run-backend run-frontend migrate
 
-stop:
-	docker-compose down
+install-backend:
+	pip install -r backend/requirements.txt
+
+install-frontend:
+	cd frontend && npm install
+
+run-backend:
+	cd backend && uvicorn main:app --reload
+
+run-frontend:
+	cd frontend && npm run dev
 
 migrate:
-	docker exec -it backend alembic upgrade head
+	alembic upgrade head
