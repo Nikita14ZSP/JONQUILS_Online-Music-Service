@@ -1,4 +1,43 @@
-fastapi
-uvicorn[standard]
-pydantic[email]
-python-dotenv 
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic[email]==2.5.0
+python-dotenv==1.0.0
+
+# Database
+sqlalchemy==2.0.23
+asyncpg==0.29.0
+alembic==1.12.1
+
+# Elasticsearch для поиска
+elasticsearch==8.11.0
+
+# ClickHouse для аналитики
+clickhouse-driver==0.2.6
+clickhouse-sqlalchemy==0.2.4
+
+# Redis для кеширования
+redis==5.0.1
+aioredis==2.0.1
+
+# Аутентификация и безопасность
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# HTTP клиент
+httpx==0.25.2
+
+# Логирование
+loguru==0.7.2
+
+# Валидация и обработка данных
+pydantic-settings==2.1.0
+
+# Тестирование
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Обработка файлов
+python-magic==0.4.27
+mutagen==1.47.0 

@@ -1,0 +1,133 @@
+from typing import List, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+from app.db.models import User
+from app.schemas.user import UserCreate, UserUpdate
+
+
+class UserService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get_users(self, skip: int = 0, limit: int = 100) -> List[User]:
+        """Получить список пользователей с пагинацией."""
+        query = select(User).offset(skip).limit(limit)
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Получить пользователя по ID."""
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Получить пользователя по email."""
+        query = select(User).where(User.email == email)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Получить пользователя по username."""
+        query = select(User).where(User.username == username)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def create_user(self, user_data: UserCreate) -> User:
+        """Создать нового пользователя."""
+        # В реальном приложении здесь должно быть хеширование пароля
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        
+        hashed_password = pwd_context.hash(user_data.password)
+        
+        db_user = User(
+            username=user_data.username,
+            email=user_data.email,
+            hashed_password=hashed_password,
+            full_name=user_data.full_name,
+            is_active=True
+        )
+        
+        self.db.add(db_user)
+        await self.db.commit()
+        await self.db.refresh(db_user)
+        return db_user
+
+    async def update_user(self, user_id: int, user_data: UserUpdate) -> Optional[User]:
+        """Обновить пользователя."""
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        db_user = result.scalar_one_or_none()
+        
+        if not db_user:
+            return None
+        
+        update_data = user_data.dict(exclude_unset=True)
+        
+        # Если обновляется пароль, хешируем его
+        if "password" in update_data:
+            from passlib.context import CryptContext
+            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            update_data["hashed_password"] = pwd_context.hash(update_data.pop("password"))
+        
+        for field, value in update_data.items():
+            setattr(db_user, field, value)
+        
+        await self.db.commit()
+        await self.db.refresh(db_user)
+        return db_user
+
+    async def delete_user(self, user_id: int) -> bool:
+        """Удалить пользователя."""
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        db_user = result.scalar_one_or_none()
+        
+        if not db_user:
+            return False
+        
+        await self.db.delete(db_user)
+        await self.db.commit()
+        return True
+
+    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
+        """Аутентификация пользователя."""
+        user = await self.get_user_by_username(username)
+        if not user:
+            user = await self.get_user_by_email(username)
+        
+        if not user:
+            return None
+        
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        
+        if not pwd_context.verify(password, user.hashed_password):
+            return None
+        
+        return user
+
+    async def get_user_playlists(self, user_id: int) -> List:
+        """Получить плейлисты пользователя."""
+        query = select(User).options(selectinload(User.playlists)).where(User.id == user_id)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return []
+        
+        return user.playlists
+
+    async def get_user_preferences(self, user_id: int) -> Optional:
+        """Получить предпочтения пользователя."""
+        query = select(User).options(selectinload(User.preferences)).where(User.id == user_id)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return None
+        
+        return user.preferences
