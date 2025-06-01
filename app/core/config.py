@@ -11,8 +11,8 @@ class Settings(BaseSettings):
 
     # PostgreSQL настройки
     POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "password"
+    POSTGRES_USER: str = "erik"
+    POSTGRES_PASSWORD: str = "2004"
     POSTGRES_DB: str = "music_service_db"
     POSTGRES_PORT: int = 5432
     DATABASE_URL: Optional[str] = None

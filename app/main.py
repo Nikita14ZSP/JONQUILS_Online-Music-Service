@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
 from app.api.v1 import api_router as api_router_v1
 from app.core.config import settings
@@ -46,4 +47,7 @@ def pong():
     """
     Sanity check for the API.
     """
-    return {"ping": "pong!"} 
+    return {"ping": "pong!"}
+
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

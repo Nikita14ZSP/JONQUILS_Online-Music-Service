@@ -76,4 +76,29 @@ class TrackSearchResponse(BaseModel):
     tracks: list[TrackWithDetails]
     total: int
     limit: int
-    offset: int 
+    offset: int
+
+# Схемы для загрузки треков по URL
+class TrackUploadFromURL(BaseModel):
+    title: str = Field(..., description="Название трека")
+    file_url: str = Field(..., description="URL аудиофайла для загрузки")
+    artist_id: int = Field(..., description="ID исполнителя")
+    album_id: Optional[int] = Field(None, description="ID альбома")
+    genre_id: Optional[int] = Field(None, description="ID жанра")
+    explicit: bool = Field(False, description="Содержит ли трек нецензурный контент")
+    preview_url: Optional[str] = Field(None, description="URL превью трека")
+
+class TrackUploadResponse(BaseModel):
+    success: bool
+    message: str
+    track_id: Optional[int] = None
+    track: Optional[Track] = None
+
+# Схемы для загрузки локальных файлов
+class TrackUploadFromFile(BaseModel):
+    title: str = Field(..., description="Название трека")
+    artist_id: int = Field(..., description="ID исполнителя")
+    album_id: Optional[int] = Field(None, description="ID альбома")
+    genre_id: Optional[int] = Field(None, description="ID жанра")
+    explicit: bool = Field(False, description="Содержит ли трек нецензурный контент")
+    duration_ms: Optional[int] = Field(None, description="Длительность в миллисекундах")

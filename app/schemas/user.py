@@ -5,6 +5,7 @@ from datetime import datetime
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="Имя пользователя")
     email: EmailStr = Field(..., description="Email пользователя")
+    full_name: Optional[str] = Field(None, max_length=255, description="Полное имя пользователя")
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, description="Пароль пользователя")
@@ -12,6 +13,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
+    full_name: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool] = None
     is_premium: Optional[bool] = None
 

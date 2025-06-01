@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body, Path, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.track import Track, TrackCreate, TrackUpdate, TrackSearchResponse
+from app.schemas.track import Track, TrackCreate, TrackUpdate, TrackSearchResponse, TrackUploadFromURL, TrackUploadResponse
 from app.services.track_service import TrackService
 from app.services.analytics_service import AnalyticsService
 from app.services.search_service import SearchService
@@ -40,6 +40,28 @@ async def create_track(
     Создать новый трек.
     """
     return await track_service.create_track(track_data=track_in)
+
+@router.post("/upload-from-url/", response_model=TrackUploadResponse, summary="Загрузить трек по URL")
+async def upload_track_from_url(
+    track_data: TrackUploadFromURL = Body(...),
+    track_service: TrackService = Depends(get_track_service)
+):
+    """
+    Загрузить трек по URL.
+    
+    Проверяет доступность URL, тип файла и создает новый трек в базе данных.
+    """
+    success, message, track = await track_service.upload_track_from_url(track_data)
+    
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    
+    return TrackUploadResponse(
+        success=True,
+        message=message,
+        track_id=track.id if track else None,
+        track=track
+    )
 
 @router.get("/search/", response_model=TrackSearchResponse, summary="Поиск треков")
 async def search_tracks_endpoint(
