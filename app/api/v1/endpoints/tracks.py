@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body, Path, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.track import Track, TrackCreate, TrackUpdate, TrackSearchResults
+from app.schemas.track import Track, TrackCreate, TrackUpdate, TrackSearchResponse
 from app.services.track_service import TrackService
 from app.services.analytics_service import AnalyticsService
 from app.services.search_service import SearchService
@@ -41,7 +41,7 @@ async def create_track(
     """
     return await track_service.create_track(track_data=track_in)
 
-@router.get("/search/", response_model=TrackSearchResults, summary="Поиск треков")
+@router.get("/search/", response_model=TrackSearchResponse, summary="Поиск треков")
 async def search_tracks_endpoint(
     query: str = Query(..., min_length=1, description="Поисковый запрос по названию или исполнителю"),
     genre: Optional[str] = Query(None, description="Фильтр по жанру"),
@@ -62,7 +62,7 @@ async def search_tracks_endpoint(
         album=album,
         limit=limit
     )
-    return TrackSearchResults(results=results, total=len(results))
+    return TrackSearchResponse(results=results, total=len(results))
 
 @router.get("/{track_id}", response_model=Track, summary="Получить трек по ID")
 async def read_track(

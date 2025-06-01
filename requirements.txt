@@ -14,7 +14,7 @@ elasticsearch==8.11.0
 
 # ClickHouse для аналитики
 clickhouse-driver==0.2.6
-clickhouse-sqlalchemy==0.2.4
+clickhouse-sqlalchemy==0.3.2
 
 # Redis для кеширования
 redis==5.0.1
