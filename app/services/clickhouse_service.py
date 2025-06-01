@@ -21,13 +21,15 @@ class ClickHouseService:
     def _initialize_client(self):
         """Инициализация клиента ClickHouse"""
         try:
+            # Используем пустую строку если пароль не задан
+            password = settings.CLICKHOUSE_PASSWORD or ""
+            
             self.client = Client(
                 host=settings.CLICKHOUSE_HOST,
                 port=settings.CLICKHOUSE_PORT,
                 user=settings.CLICKHOUSE_USER,
-                password=settings.CLICKHOUSE_PASSWORD if settings.CLICKHOUSE_PASSWORD else None,
-                database=settings.CLICKHOUSE_DATABASE,
-                settings={'use_numpy': True}
+                password=password,
+                database=settings.CLICKHOUSE_DATABASE
             )
             # Проверяем соединение
             self.client.execute('SELECT 1')
@@ -35,6 +37,38 @@ class ClickHouseService:
         except Exception as e:
             print(f"❌ Failed to connect to ClickHouse: {e}")
             self.client = None
+    
+    async def test_connection(self):
+        """Тестируем подключение к ClickHouse"""
+        if not self.client:
+            raise Exception("ClickHouse client not initialized")
+        
+        try:
+            result = self.client.execute('SELECT 1')
+            return result[0][0] == 1
+        except Exception as e:
+            raise Exception(f"Failed to test ClickHouse connection: {e}")
+    
+    async def close(self):
+        """Закрываем соединение с ClickHouse"""
+        if self.client:
+            try:
+                self.client.disconnect()
+            except:
+                pass
+            self.client = None
+    
+    async def execute_query(self, query: str, parameters: list = None):
+        """Выполняем произвольный запрос"""
+        if not self.client:
+            raise Exception("ClickHouse client not initialized")
+        
+        try:
+            if parameters:
+                return self.client.execute(query, parameters)
+            return self.client.execute(query)
+        except Exception as e:
+            raise Exception(f"Failed to execute query: {e}")
     
     async def create_tables(self):
         """Создание таблиц в ClickHouse для аналитики"""
@@ -169,6 +203,37 @@ class ClickHouseService:
         except ClickHouseError as e:
             print(f"Error inserting listening event: {e}")
             return False
+    
+    async def insert_simple_listening_event(self, user_id: int, track_id: int, played_duration: int, 
+                                          device_type: str = 'web', country: str = 'Unknown', 
+                                          timestamp: datetime = None) -> bool:
+        """Простая вставка события прослушивания с минимальными параметрами"""
+        import uuid
+        from datetime import datetime
+        
+        if timestamp is None:
+            timestamp = datetime.now()
+        
+        event_data = {
+            'event_id': str(uuid.uuid4()),
+            'user_id': user_id,
+            'track_id': track_id,
+            'artist_id': 1,  # Default values
+            'album_id': 1,
+            'genre_id': 1,
+            'played_at': timestamp,
+            'play_duration_ms': played_duration * 1000,  # Convert to milliseconds
+            'completion_percentage': min(100.0, (played_duration / 180.0) * 100),  # Assume 3 min songs
+            'source': 'web',
+            'device_type': device_type,
+            'session_id': str(uuid.uuid4()),
+            'ip_address': '127.0.0.1',
+            'user_agent': 'Mozilla/5.0',
+            'country': country,
+            'city': 'Unknown'
+        }
+        
+        return await self.insert_listening_event(event_data)
     
     async def insert_search_event(self, event_data: Dict[str, Any]) -> bool:
         """Вставка поискового события в ClickHouse"""
@@ -512,3 +577,6 @@ class ClickHouseService:
         except ClickHouseError as e:
             print(f"Error getting trending tracks: {e}")
             return []
+
+# Создаем глобальный экземпляр сервиса
+clickhouse_service = ClickHouseService()

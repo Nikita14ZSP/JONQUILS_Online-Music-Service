@@ -424,3 +424,26 @@ class SearchService:
                 album_title=row.album_title,
                 genre_name=row.genre_name
             )
+    
+    async def search_tracks(self, query: str, genre: str = None, year: int = None, 
+                           artist: str = None, album: str = None, limit: int = 10) -> List[TrackWithDetails]:
+        """Поиск треков с простыми параметрами (для совместимости с API endpoint)"""
+        from app.schemas.track import TrackSearchQuery
+        
+        # Создаем объект поискового запроса
+        search_query = TrackSearchQuery(
+            query=query,
+            genre=genre,
+            artist=artist,
+            album=album,
+            limit=limit,
+            offset=0
+        )
+        
+        # Используем основной метод поиска
+        if self.es:
+            result = await self.search_tracks_elasticsearch(search_query)
+        else:
+            result = await self.search_tracks_fallback(search_query)
+        
+        return result.tracks

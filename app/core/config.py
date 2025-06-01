@@ -2,6 +2,11 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 from pydantic import field_validator
 from typing import Optional
+import os
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env файла
+load_dotenv()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "JONQUILS - Онлайн-музыкальный сервис"
@@ -65,6 +70,7 @@ class Settings(BaseSettings):
         case_sensitive = True
         env_file = ".env"
         env_file_encoding = 'utf-8'
+        extra = "allow"  # Разрешаем дополнительные поля
 
 @lru_cache()
 def get_settings() -> Settings:
