@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import logging
 
 from app.api.v1 import api_router as api_router_v1
 from app.core.config import settings
+from app.services.clickhouse_service import ClickHouseService
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -20,6 +24,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Инициализация ClickHouse при запуске
+async def initialize_clickhouse():
+    """Инициализация таблиц ClickHouse при запуске приложения."""
+    try:
+        from app.services.clickhouse_service import clickhouse_service
+        await clickhouse_service.create_tables()
+        logger.info("ClickHouse tables initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize ClickHouse: {e}")
+        # Не останавливаем приложение, если ClickHouse недоступен
+        # В продакшене можно изменить поведение
+
+@app.on_event("startup")
+async def startup_event():
+    """События при запуске приложения."""
+    await initialize_clickhouse()
 
 app.include_router(api_router_v1, prefix=settings.API_V1_STR)
 

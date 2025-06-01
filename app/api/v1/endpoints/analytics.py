@@ -130,4 +130,116 @@ async def get_similar_users(
     Найти пользователей с похожими музыкальными предпочтениями.
     """
     similar_users = await analytics_service.get_similar_users(user_id=user_id, limit=limit)
-    return {"user_id": user_id, "similar_users": similar_users} 
+    return {"user_id": user_id, "similar_users": similar_users}
+
+# Новые эндпоинты для расширенной ClickHouse-аналитики
+
+@router.get("/realtime/platform-stats", summary="Статистика платформы в реальном времени")
+async def get_realtime_platform_stats(
+    analytics_service: AnalyticsService = Depends(get_analytics_service)
+):
+    """
+    Получить статистику платформы в реальном времени из ClickHouse.
+    """
+    stats = await analytics_service.get_platform_statistics()
+    return {"platform_stats": stats}
+
+@router.get("/realtime/active-users", summary="Активные пользователи в реальном времени")
+async def get_realtime_active_users(
+    minutes: int = Query(default=60, ge=1, le=1440, description="Период в минутах"),
+    analytics_service: AnalyticsService = Depends(get_analytics_service)
+):
+    """
+    Получить количество активных пользователей за последние N минут.
+    """
+    active_users = await analytics_service.get_active_users_count(minutes=minutes)
+    return {"minutes": minutes, "active_users": active_users}
+
+@router.get("/advanced/track-analytics/{track_id}", summary="Расширенная аналитика трека")
+async def get_advanced_track_analytics(
+    track_id: int = Path(..., title="ID трека", ge=1),
+    period: str = Query(default="week", regex="^(day|week|month|year)$"),
+    analytics_service: AnalyticsService = Depends(get_analytics_service)
+):
+    """
+    Получить расширенную аналитику трека из ClickHouse.
+    """
+    analytics = await analytics_service.get_track_analytics(track_id=track_id, period=period)
+    return {"track_id": track_id, "period": period, "analytics": analytics}
+
+@router.get("/advanced/user-analytics/{user_id}", summary="Расширенная аналитика пользователя")
+async def get_advanced_user_analytics(
+    user_id: int = Path(..., title="ID пользователя", ge=1),
+    period: str = Query(default="week", regex="^(day|week|month|year)$"),
+    analytics_service: AnalyticsService = Depends(get_analytics_service)
+):
+    """
+    Получить расширенную аналитику пользователя из ClickHouse.
+    """
+    analytics = await analytics_service.get_user_analytics(user_id=user_id, period=period)
+    return {"user_id": user_id, "period": period, "analytics": analytics}
+
+@router.post("/events/search", status_code=201, summary="Записать событие поиска")
+async def record_search_event(
+    user_id: int = Body(...),
+    query: str = Body(...),
+    results_count: int = Body(default=0),
+    analytics_service: AnalyticsService = Depends(get_analytics_service)
+):
+    """
+    Записать событие поиска пользователя.
+    """
+    await analytics_service.record_search_event(
+        user_id=user_id,
+        query=query,
+        results_count=results_count
+    )
+    return {"message": "Search event recorded"}
+
+@router.post("/events/playlist", status_code=201, summary="Записать событие с плейлистом")
+async def record_playlist_event(
+    user_id: int = Body(...),
+    playlist_id: int = Body(...),
+    action: str = Body(..., regex="^(create|update|delete|add_track|remove_track)$"),
+    track_id: Optional[int] = Body(default=None),
+    analytics_service: AnalyticsService = Depends(get_analytics_service)
+):
+    """
+    Записать событие действия с плейлистом.
+    """
+    await analytics_service.record_playlist_event(
+        user_id=user_id,
+        playlist_id=playlist_id,
+        action=action,
+        track_id=track_id
+    )
+    return {"message": "Playlist event recorded"}
+
+@router.get("/performance/summary", summary="Сводка производительности аналитики")
+async def get_performance_summary(
+    analytics_service: AnalyticsService = Depends(get_analytics_service)
+):
+    """
+    Получить сводку производительности различных источников данных.
+    """
+    # Сравним производительность PostgreSQL vs ClickHouse для некоторых запросов
+    import time
+    
+    results = {}
+    
+    # Тест популярных треков
+    start_time = time.time()
+    pg_popular = await analytics_service.get_popular_tracks(period="week", limit=10)
+    pg_time = time.time() - start_time
+    
+    start_time = time.time()
+    ch_popular = await analytics_service.get_popular_tracks_clickhouse(period="week", limit=10)
+    ch_time = time.time() - start_time
+    
+    results["popular_tracks"] = {
+        "postgresql_time": round(pg_time, 4),
+        "clickhouse_time": round(ch_time, 4),
+        "performance_gain": round(pg_time / ch_time if ch_time > 0 else 0, 2)
+    }
+    
+    return {"performance_comparison": results}

@@ -10,14 +10,14 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.database import get_db_session
+from app.db.database import AsyncSessionLocal
 from app.db.models import Genre, Artist, Album, Track
 from datetime import datetime
 
 async def create_test_data():
     """Создание тестовых данных"""
     
-    async with get_db_session() as db:
+    async with AsyncSessionLocal() as db:
         print("🎵 Создаем тестовые данные для музыкального сервиса...")
         
         # 1. Создаем жанры
