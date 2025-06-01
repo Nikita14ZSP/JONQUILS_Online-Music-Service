@@ -72,4 +72,8 @@ class AnalyticsQuery(BaseModel):
     artist_id: Optional[int] = None
     genre: Optional[str] = None
     limit: int = Field(50, ge=1, le=1000)
-    offset: int = Field(0, ge=0) 
+    offset: int = Field(0, ge=0)
+
+class AnalyticsStats(BaseModel):
+    """Заглушка для общей статистики аналитики"""
+    message: str = "Analytics data will be here" 
