@@ -1,43 +1,60 @@
 # Web Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic[email]==2.5.0
-python-dotenv==1.0.0
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic[email]==2.10.4
+python-dotenv==1.0.1
 
 # Database
-sqlalchemy==2.0.23
-asyncpg==0.29.0
-alembic==1.12.1
+sqlalchemy==2.0.36
+asyncpg==0.31.0
+alembic==1.14.0
+psycopg2-binary==2.9.10
 
 # Elasticsearch для поиска
-elasticsearch==8.11.0
+elasticsearch==8.17.0
 
 # ClickHouse для аналитики
-clickhouse-driver==0.2.6
-clickhouse-sqlalchemy==0.3.2
+clickhouse-driver==0.2.9
+clickhouse-sqlalchemy==0.4.0
 
 # Redis для кеширования
-redis==5.0.1
+redis==5.2.1
 aioredis==2.0.1
 
 # Аутентификация и безопасность
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
+python-multipart==0.0.12
 
 # HTTP клиент
-httpx==0.25.2
+httpx==0.28.1
+requests==2.32.3
 
 # Логирование
-loguru==0.7.2
+loguru==0.7.3
 
 # Валидация и обработка данных
-pydantic-settings==2.1.0
+pydantic-settings==2.7.0
+
+# Async utilities
+asyncio==3.4.3
+aiofiles==24.1.0
 
 # Тестирование
-pytest==7.4.3
-pytest-asyncio==0.21.1
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-mock==3.14.0
 
 # Обработка файлов
 python-magic==0.4.27
-mutagen==1.47.0 
+mutagen==1.47.0
+
+# Утилиты для работы с датами
+python-dateutil==2.9.0
+
+# JSON обработка
+orjson==3.10.12
+
+# UUID генерация
+uuid==1.30 
+aiofiles==24.1.0
