@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: elasticsearch:8.11.0 # Используем версию 8.11.0, совместимую с вашим проектом
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node # Для разработки, запускаем как одиночный узел
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m # Ограничиваем использование памяти
+      - xpack.security.enabled=false # Отключаем безопасность для простоты (для разработки)
+    volumes:
+      - esdata:/usr/share/elasticsearch/data # Сохраняем данные Elasticsearch
+
+volumes:
+  esdata: # Определение тома для данных Elasticsearch 

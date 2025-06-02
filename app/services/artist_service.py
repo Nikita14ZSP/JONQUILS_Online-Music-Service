@@ -29,15 +29,19 @@ class ArtistService:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def create_artist(self, artist_data: ArtistCreate) -> Artist:
+    async def get_artist_by_user_id(self, user_id: int) -> Optional[Artist]:
+        """Получить профиль артиста по ID пользователя."""
+        query = select(Artist).where(Artist.user_id == user_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def create_artist(self, artist_data: ArtistCreate, user_id: Optional[int] = None) -> Artist:
         """Создать нового исполнителя."""
-        db_artist = Artist(
-            name=artist_data.name,
-            bio=artist_data.bio,
-            country=artist_data.country,
-            genre=artist_data.genre,
-            image_url=artist_data.image_url
-        )
+        db_artist_data = artist_data.model_dump()
+        if user_id:
+            db_artist_data['user_id'] = user_id
+            
+        db_artist = Artist(**db_artist_data)
         
         self.db.add(db_artist)
         await self.db.commit()

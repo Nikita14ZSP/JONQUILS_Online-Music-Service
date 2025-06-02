@@ -9,6 +9,7 @@ class AlbumBase(BaseModel):
 class AlbumCreate(AlbumBase):
     artist_id: int = Field(..., description="ID исполнителя")
     release_date: Optional[datetime] = Field(None, description="Дата выпуска")
+    genre_id: Optional[int] = Field(None, description="ID жанра альбома")
     spotify_id: Optional[str] = Field(None, description="Spotify ID")
 
 class AlbumUpdate(BaseModel):

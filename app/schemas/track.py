@@ -8,7 +8,7 @@ class TrackBase(BaseModel):
     explicit: bool = Field(False, description="Содержит ли трек нецензурный контент")
     popularity: int = Field(0, ge=0, le=100, description="Популярность трека 0-100")
     preview_url: Optional[str] = Field(None, description="URL превью трека")
-    file_url: Optional[str] = Field(None, description="URL для стриминга")
+    file_path: Optional[str] = Field(None, description="Локальный путь к файлу трека")
     
     # Аудио характеристики
     tempo: Optional[float] = Field(None, description="Темп в BPM")
@@ -31,7 +31,7 @@ class TrackUpdate(BaseModel):
     explicit: Optional[bool] = None
     popularity: Optional[int] = Field(None, ge=0, le=100)
     preview_url: Optional[str] = None
-    file_url: Optional[str] = None
+    file_path: Optional[str] = Field(None, description="Локальный путь к файлу трека")
     tempo: Optional[float] = None
     energy: Optional[float] = Field(None, ge=0.0, le=1.0)
     valence: Optional[float] = Field(None, ge=0.0, le=1.0)
@@ -44,6 +44,7 @@ class TrackInDBBase(TrackBase):
     genre_id: Optional[int]
     spotify_id: Optional[str]
     created_at: datetime
+    file_path: Optional[str]
     
     class Config:
         from_attributes = True
@@ -102,3 +103,11 @@ class TrackUploadFromFile(BaseModel):
     genre_id: Optional[int] = Field(None, description="ID жанра")
     explicit: bool = Field(False, description="Содержит ли трек нецензурный контент")
     duration_ms: Optional[int] = Field(None, description="Длительность в миллисекундах")
+    file_path: str = Field(..., description="Локальный путь к файлу трека")
+
+class TrackMetadataForAlbumUpload(BaseModel):
+    file_name: str = Field(..., description="Имя файла трека")
+    title: str = Field(..., description="Название трека")
+    duration_ms: Optional[int] = Field(None, description="Длительность в миллисекундах")
+    explicit: bool = Field(False, description="Содержит ли трек нецензурный контент")
+    genre_id: Optional[int] = Field(None, description="ID жанра")

@@ -1,28 +1,71 @@
+:root {
+  --primary-bg-color: #1a1a1a; /* Основной фон (чуть темнее черного) */
+  --secondary-bg-color: #0f0f0f; /* Фон боковой панели/хедеров */
+  --tertiary-bg-color: #282828; /* Фон для карточек/элементов */
+  --text-color-primary: #ffffff; /* Основной белый текст */
+  --text-color-secondary: #aaaaaa; /* Вторичный текст (например, для подзаголовков) */
+  --accent-color: #fc385d; /* Красный акцентный цвет (как в Apple Music) */
+  --hover-color: #383838; /* Цвет при наведении */
+}
+
+/* Общие стили */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--primary-bg-color); /* Используем переменную */
+  color: var(--text-color-primary); /* Используем переменную */
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
 /* Стили для основного контейнера приложения */
 .app-container {
   display: flex;
-  height: 100vh; /* Полная высота видимой области */
-  background-color: #1a1a1a; /* Темный фон, как на скриншоте */
-  color: #ffffff; /* Белый текст */
+  background-color: var(--primary-bg-color); /* Используем переменную */
+  color: var(--text-color-primary);
+  min-height: 100vh;
 }
 
 /* Стили для боковой панели */
 .sidebar {
   width: 250px; /* Ширина боковой панели */
-  background-color: #0f0f0f; /* Еще более темный фон для боковой панели */
+  background-color: var(--secondary-bg-color); /* Используем переменную */
   padding: 20px;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid var(--hover-color); /* Небольшая граница справа */
 }
 
 .sidebar .logo {
   margin-bottom: 30px;
-  text-align: center; /* Выравнивание логотипа по центру */
+  text-align: left; /* Выравнивание логотипа влево */
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.sidebar .logo h2,
+.sidebar .logo .app-logo {
+  width: 30px; /* Размер вашего логотипа */
+  height: 30px;
+  object-fit: contain;
+}
+
+.sidebar .logo h2 {
+    font-size: 1.2em;
+    margin: 0;
+}
+
 .sidebar .logo p {
-  margin: 0;
+    font-size: 0.8em;
+    margin: 0;
+    color: var(--text-color-secondary); /* Используем переменную */
 }
 
 .sidebar .navigation ul {
@@ -35,78 +78,114 @@
 }
 
 .sidebar .navigation a {
-  color: #ffffff; /* Белый цвет ссылок */
+  color: var(--text-color-primary); /* Используем переменную */
   text-decoration: none;
   font-size: 1.1em;
   display: flex;
   align-items: center;
+  padding: 8px 10px; /* Отступы для ссылок */
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.sidebar .navigation a:hover {
+    background-color: var(--hover-color); /* Используем переменную */
 }
 
 .sidebar .navigation a i {
   margin-right: 10px; /* Отступ справа от иконки */
+  font-size: 1.2em;
 }
 
 /* Стили для основного контента */
 .main-content {
   flex-grow: 1; /* Занимает оставшееся пространство */
-  padding: 20px;
+  padding: 20px 40px; /* Увеличиваем отступы */
   overflow-y: auto; /* Прокрутка, если контента много */
 }
 
 .main-content .top-bar {
     height: 50px; /* Примерная высота верхней панели */
-    /* Стили для верхней панели, если нужны */
+    display: flex;
+    justify-content: space-between; /* Изменяем на space-between для выравнивания по краям */
+    align-items: center;
     margin-bottom: 20px; /* Отступ после верхней панели */
+    padding: 0 40px;
+    /* gap: 15px; /* Убираем, так как space-between сам управляет основным отступом */
 }
 
 .main-content h1 {
   margin-top: 0;
-  font-size: 2em;
+  font-size: 2.5em;
   margin-bottom: 20px;
+  font-weight: bold;
 }
 
 .featured-section {
-  margin-bottom: 30px;
+  margin-bottom: 40px;
 }
 
 .featured-section h3 {
     margin: 0 0 5px 0;
-    color: #cccccc; /* Более светлый цвет для подзаголовка */
-    font-size: 0.9em;
+    color: var(--text-color-secondary); /* Используем переменную */
+    font-size: 1em;
+    text-transform: uppercase;
 }
 
 .featured-section h2 {
     margin: 0 0 10px 0;
+    font-size: 1.8em;
+    font-weight: bold;
 }
 
 .playlist-image-placeholder {
     width: 100%;
-    height: 200px; /* Примерная высота картинки */
-    background-color: #333333; /* Серый фон для заглушки */
+    max-width: 800px; /* Максимальная ширина картинки */
+    height: 250px; /* Примерная высота картинки */
+    background-color: var(--hover-color); /* Используем переменную */
     margin-top: 10px;
-    /* Стили для реального изображения будут другими */
+    border-radius: 10px;
 }
 
 .latest-songs-section ul {
   list-style: none;
   padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Адаптивная сетка */
+  gap: 20px; /* Отступ между элементами сетки */
 }
 
 .latest-songs-section li {
-  margin-bottom: 10px;
-  font-size: 1.1em;
+  background-color: var(--tertiary-bg-color); /* Используем переменную */
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 1em;
+  color: var(--text-color-secondary); /* Используем переменную */
+}
+
+.latest-songs-section li:before {
+    content: ''; /* Убираем стандартные маркеры списка */
 }
 
 /* Стили для нижнего баннера */
 .bottom-banner {
-  height: 60px; /* Высота баннера */
-  background-color: #ff0000; /* Красный цвет, как на скриншоте */
-  color: #ffffff; /* Белый текст */
+  height: 80px; /* Увеличиваем высоту баннера */
+  background-color: var(--accent-color); /* Используем переменную */
+  color: var(--text-color-primary); /* Используем переменную */
   display: flex;
   justify-content: center; /* Выравнивание по горизонтали */
   align-items: center; /* Выравнивание по вертикали */
   padding: 0 20px;
   flex-shrink: 0; /* Предотвращает сжатие баннера */
+  font-size: 1.1em;
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
+  z-index: 1000;
 }
 
 .bottom-banner p {
@@ -114,16 +193,491 @@
 }
 
 .bottom-banner button {
-  background-color: #ffffff; /* Белая кнопка */
-  color: #ff0000; /* Красный текст на кнопке */
+  background-color: var(--text-color-primary); /* Используем переменную */
+  color: var(--accent-color); /* Используем переменную */
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px; /* Скругленные углы */
+  padding: 12px 25px;
+  border-radius: 25px; /* Скругленные углы */
   cursor: pointer;
-  font-size: 1em;
+  font-size: 1.1em;
   font-weight: bold;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .bottom-banner button:hover {
-  opacity: 0.8; /* Небольшое изменение прозрачности при наведении */
+  background-color: #eee; /* Более темный фон при наведении */
+}
+
+/* Стили для контейнеров аутентификации */
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--secondary-bg-color); /* Используем переменную */
+  color: var(--text-color-primary);
+  padding: 20px;
+  width: 100%;
+}
+
+.auth-container h2 {
+  margin-bottom: 30px;
+  color: var(--text-color-primary); /* Используем переменную */
+}
+
+.auth-form {
+  background-color: var(--tertiary-bg-color);
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: var(--text-color-secondary); /* Используем переменную */
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"] {
+  width: calc(100% - 20px); /* Учитываем padding */
+  padding: 10px;
+  border: 1px solid var(--hover-color); /* Используем переменную */
+  border-radius: 4px;
+  background-color: var(--tertiary-bg-color); /* Используем переменную */
+  color: var(--text-color-primary); /* Используем переменную */
+  font-size: 16px;
+}
+
+.form-group input[type="text"]::placeholder,
+.form-group input[type="email"]::placeholder,
+.form-group input[type="password"]::placeholder {
+  color: var(--text-color-secondary); /* Используем переменную */
+}
+
+.auth-button {
+  background-color: var(--accent-color); /* Красный акцентный цвет */
+  color: var(--text-color-primary); /* Белый текст */
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px; /* Скругленные углы */
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  text-decoration: none; /* Убираем подчеркивание */
+  transition: background-color 0.2s ease-in-out;
+  white-space: nowrap; /* Предотвращаем перенос текста */
+}
+
+.auth-button.profile {
+  background-color: var(--accent-color);
+  color: var(--text-color-primary);
+}
+
+.auth-button.logout {
+  background-color: transparent;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.auth-button.logout:hover {
+  background-color: var(--accent-color);
+  color: var(--text-color-primary);
+}
+
+.auth-button-secondary {
+  background-color: transparent;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.auth-button-secondary:hover {
+  background-color: var(--accent-color);
+  color: var(--text-color-primary);
+}
+
+.error-message {
+  color: var(--accent-color); /* Используем акцентный цвет для ошибок */
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.success-message {
+  color: #4CAF50; /* Зеленый цвет для успеха */
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.auth-container p {
+  margin-top: 20px;
+  color: var(--text-color-secondary); /* Используем переменную */
+}
+
+.auth-container p a {
+  color: var(--accent-color); /* Используем переменную */
+  text-decoration: none;
+}
+
+.auth-container p a:hover {
+  text-decoration: underline;
+}
+
+/* Стили для верхней панели с авторизацией */
+.top-bar {
+  height: 50px;
+  display: flex;
+  justify-content: space-between; /* Кнопка поиска слева, остальные элементы справа */
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 40px;
+  width: 100%; /* Убедимся, что верхняя панель занимает всю ширину */
+  box-sizing: border-box; /* Учитываем padding в ширине */
+  gap: 15px; /* Общий отступ между основными группами элементов в top-bar (не влияет на space-between) */
+}
+
+.search-button {
+  background-color: var(--tertiary-bg-color); /* Фон кнопки */
+  color: var(--text-color-secondary); /* Цвет текста/иконки */
+  border: 1px solid var(--text-color-secondary); /* Добавляем тонкую рамку */
+  padding: 8px 16px; /* Единый padding */
+  height: 36px; /* Фиксированная высота */
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Центрируем текст по горизонтали и вертикали */
+  gap: 8px;
+  flex-shrink: 0; /* Предотвращаем сжатие */
+}
+
+.search-button:hover {
+  background-color: var(--hover-color);
+  color: var(--text-color-primary);
+  border-color: var(--text-color-primary);
+}
+
+.search-button i {
+  font-size: 16px;
+  vertical-align: middle; /* Выравниваем иконку по центру */
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.auth-buttons .auth-button {
+  background-color: transparent;
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  padding: 8px 16px; /* Единый padding */
+  height: 36px; /* Фиксированная высота */
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+  margin: 0;
+  width: auto;
+  display: flex; /* Для центрирования текста */
+  align-items: center; /* Для центрирования текста */
+  justify-content: center; /* Для центрирования текста */
+  flex-shrink: 0; /* Предотвращаем сжатие */
+}
+
+.auth-buttons .auth-button:hover {
+  background-color: var(--accent-color);
+  color: var(--text-color-primary);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Отступ между текстом приветствия и кнопками */
+  color: var(--text-color-primary);
+}
+
+.user-info span {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-color-primary);
+  white-space: nowrap; /* Чтобы имя не переносилось */
+}
+
+.logout {
+  background-color: transparent;
+  color: var(--accent-color);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.logout:hover {
+  text-decoration: underline;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 18px;
+  color: var(--text-color-primary); /* Используем переменную */
+}
+
+/* Стили для SearchPage */
+.search-page {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: var(--text-color-primary);
+}
+
+.search-input-container {
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 20px 12px 45px; /* Увеличиваем padding-left для иконки */
+  border-radius: 25px;
+  border: none;
+  background-color: var(--tertiary-bg-color); /* Более темный фон для поля ввода */
+  color: var(--text-color-primary);
+  font-size: 16px;
+  outline: none;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.search-input::placeholder {
+  color: var(--text-color-secondary);
+}
+
+.search-input:focus {
+  background-color: var(--hover-color); /* При фокусе темнее */
+  box-shadow: 0 0 0 2px var(--accent-color); /* Обводка акцентным цветом */
+}
+
+/* Иконка поиска (можно добавить через ::before или background-image) */
+.search-input-container::before {
+  content: '\1F50D'; /* Юникод символ лупы */
+  font-family: 'Font Awesome 5 Free'; /* Если используем Font Awesome */
+  font-weight: 900;
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-color-secondary);
+  font-size: 20px;
+}
+
+.loading-text, .error-text, .no-results-text {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 18px;
+  color: var(--text-color-secondary);
+}
+
+.error-text {
+  color: var(--accent-color);
+}
+
+.search-results {
+  margin-top: 40px;
+}
+
+.results-section {
+  margin-bottom: 50px;
+}
+
+.results-section h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-color-primary);
+  margin-bottom: 25px;
+  border-bottom: 1px solid var(--hover-color); /* Разделитель */
+  padding-bottom: 10px;
+}
+
+.track-list, .artist-list, .album-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* Адаптивная сетка */
+  gap: 25px;
+}
+
+.track-item, .artist-item, .album-item {
+  background-color: var(--tertiary-bg-color);
+  border-radius: 12px;
+  overflow: hidden;
+  text-align: center;
+  padding: 15px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.track-item:hover, .artist-item:hover, .album-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.track-cover, .album-cover {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.artist-image {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%; /* Круглое изображение для артистов */
+  object-fit: cover;
+  margin-bottom: 10px;
+  border: 3px solid var(--accent-color); /* Обводка для артистов */
+}
+
+.track-info, .album-info {
+  text-align: left;
+  width: 100%;
+}
+
+.track-title, .album-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-artist, .album-artist {
+  font-size: 14px;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.artist-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+  margin-top: 10px;
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 768px) {
+  .track-list, .artist-list, .album-list {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .search-input {
+    font-size: 14px;
+    padding: 10px 15px 10px 40px;
+  }
+
+  .search-input-container::before {
+    font-size: 18px;
+    left: 12px;
+  }
+
+  .results-section h2 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .track-list, .artist-list, .album-list {
+    grid-template-columns: 1fr; /* Одна колонка на очень маленьких экранах */
+  }
+
+  .search-page {
+    padding: 15px;
+  }
+
+  .track-cover, .album-cover {
+    height: auto;
+  }
+
+  .artist-image {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+/* Стили для оверлея поиска */
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9); /* Затемненный фон */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Выравнивание сверху, чтобы поле поиска было ближе к верху */
+  z-index: 2000; /* Выше всего остального */
+  padding-top: 50px; /* Отступ сверху для поля поиска */
+  overflow-y: auto; /* Для прокрутки, если много результатов */
+}
+
+.close-search-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--text-color-primary); /* Белый цвет */
+  font-size: 30px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  z-index: 2001; /* Выше оверлея */
+}
+
+.close-search-button:hover {
+  color: var(--accent-color); /* Акцентный цвет при наведении */
+}
+
+/* Стили для SearchPage внутри оверлея (переопределяем некоторые) */
+.search-overlay .search-page {
+  width: 80%; /* Ширина страницы поиска в оверлее */
+  max-width: 900px;
+  padding: 0; /* Убираем внутренний padding, так как он уже есть в оверлее */
+}
+
+.search-overlay .search-input-container {
+  margin-bottom: 30px;
+}
+
+/* НОВЫЙ СТИЛЬ: Контейнер для кнопок аутентификации (логин/регистрация, профиль/выйти) */
+.auth-buttons-group {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Отступ между элементами внутри группы кнопок */
 }

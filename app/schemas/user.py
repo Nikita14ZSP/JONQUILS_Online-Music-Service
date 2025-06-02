@@ -6,6 +6,7 @@ class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="Имя пользователя")
     email: EmailStr = Field(..., description="Email пользователя")
     full_name: Optional[str] = Field(None, max_length=255, description="Полное имя пользователя")
+    role: str = "listener" # Добавлено поле role
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, description="Пароль пользователя")
@@ -28,7 +29,10 @@ class UserInDBBase(UserBase):
         from_attributes = True
 
 class User(UserInDBBase):
-    pass
+    artist_profile_id: Optional[int] = None # ID связанного профиля артиста
+
+    class Config:
+        from_attributes = True
 
 class UserProfile(UserInDBBase):
     """Профиль пользователя с дополнительной информацией"""

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
+from starlette.routing import Mount
 import uvicorn
 import logging
 
@@ -24,6 +26,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Обслуживание статических файлов
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Инициализация ClickHouse при запуске
 async def initialize_clickhouse():
