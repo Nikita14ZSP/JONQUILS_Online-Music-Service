@@ -480,6 +480,28 @@ class ClickHouseService:
             print(f"Failed to get artist stats: {e}")
             return {}
     
+    async def insert_simple_listening_event(self, user_id: int, track_id: int, played_duration: int, device_type: str = "web", country: str = "Unknown"):
+        """Простая вставка события прослушивания для тестирования"""
+        if not self.client:
+            return False
+        
+        try:
+            # Используем метод log_track_action для вставки данных
+            await self.log_track_action(
+                track_id=track_id,
+                artist_id=1,  # Тестовый артист
+                action="play",
+                user_id=user_id,
+                duration_played_ms=played_duration * 1000,  # Конвертируем в миллисекунды
+                platform="web",
+                device_type=device_type,
+                location=country
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to insert listening event: {e}")
+            return False
+    
     async def close(self):
         """Закрываем соединение с ClickHouse"""
         if self.client:
@@ -502,7 +524,7 @@ class ClickHouseService:
             raise Exception(f"Failed to execute query: {e}")
     
     # Методы для получения пользовательской аналитики
-    async def get_user_search_history(self, user_id: int, days: int = 30, limit: int = 50):
+    async def get_user_search_history(self, user_id: int, days: int = 30):
         """Получаем историю поисков пользователя"""
         if not self.client:
             return []
@@ -510,8 +532,8 @@ class ClickHouseService:
         try:
             query = """
             SELECT 
-                timestamp,
                 search_query,
+                timestamp,
                 results_count,
                 clicked_result_id,
                 clicked_result_type
@@ -519,19 +541,18 @@ class ClickHouseService:
             WHERE user_id = %(user_id)s 
                 AND timestamp >= subtractDays(now(), %(days)s)
             ORDER BY timestamp DESC
-            LIMIT %(limit)s
+            LIMIT 50
             """
             
             result = self.client.execute(query, {
                 'user_id': user_id,
-                'days': days,
-                'limit': limit
+                'days': days
             })
             
             return [
                 {
-                    'timestamp': row[0],
-                    'search_query': row[1],
+                    'search_query': row[0],
+                    'timestamp': row[1].strftime('%Y-%m-%d %H:%M:%S'),
                     'results_count': row[2],
                     'clicked_result_id': row[3],
                     'clicked_result_type': row[4]
@@ -542,44 +563,7 @@ class ClickHouseService:
             print(f"Error getting user search history: {e}")
             return []
     
-    async def get_user_top_tracks(self, user_id: int, days: int = 30, limit: int = 10):
-        """Получаем топ треков пользователя по прослушиваниям"""
-        if not self.client:
-            return []
-        
-        try:
-            query = """
-            SELECT 
-                track_id,
-                count() as play_count,
-                sum(play_duration_ms) as total_duration_ms,
-                avg(play_duration_ms) as avg_duration_ms
-            FROM track_analytics 
-            WHERE user_id = %(user_id)s 
-                AND timestamp >= subtractDays(now(), %(days)s)
-            GROUP BY track_id
-            ORDER BY play_count DESC
-            LIMIT %(limit)s
-            """
-            
-            result = self.client.execute(query, {
-                'user_id': user_id,
-                'days': days,
-                'limit': limit
-            })
-            
-            return [
-                {
-                    'track_id': row[0],
-                    'play_count': row[1],
-                    'total_duration_ms': row[2],
-                    'avg_duration_ms': row[3]
-                }
-                for row in result
-            ]
-        except Exception as e:
-            print(f"Error getting user top tracks: {e}")
-            return []
+
     
     async def get_user_activity_stats(self, user_id: int, days: int = 30):
         """Получаем общую статистику активности пользователя"""
@@ -649,27 +633,37 @@ class ClickHouseService:
         
         try:
             query = """
+            WITH dates AS (
+                SELECT today() - number AS date
+                FROM numbers(%(days)s)
+            ),
+            search_activity AS (
+                SELECT 
+                    toDate(timestamp) as date,
+                    count() as search_count
+                FROM search_analytics 
+                WHERE user_id = %(user_id)s 
+                    AND timestamp >= subtractDays(now(), %(days)s)
+                GROUP BY toDate(timestamp)
+            ),
+            listening_activity AS (
+                SELECT 
+                    toDate(timestamp) as date,
+                    count() as listening_count
+                FROM track_analytics 
+                WHERE user_id = %(user_id)s 
+                    AND timestamp >= subtractDays(now(), %(days)s)
+                GROUP BY toDate(timestamp)
+            )
             SELECT 
-                toDate(timestamp) as date,
-                count() as activity_count,
-                'search' as activity_type
-            FROM search_analytics 
-            WHERE user_id = %(user_id)s 
-                AND timestamp >= subtractDays(now(), %(days)s)
-            GROUP BY toDate(timestamp)
-            
-            UNION ALL
-            
-            SELECT 
-                toDate(timestamp) as date,
-                count() as activity_count,
-                'listening' as activity_type
-            FROM track_analytics 
-            WHERE user_id = %(user_id)s 
-                AND timestamp >= subtractDays(now(), %(days)s)
-            GROUP BY toDate(timestamp)
-            
-            ORDER BY date DESC
+                d.date,
+                coalesce(s.search_count, 0) as search_count,
+                coalesce(l.listening_count, 0) as listening_count,
+                1 as session_count
+            FROM dates d
+            LEFT JOIN search_activity s ON d.date = s.date
+            LEFT JOIN listening_activity l ON d.date = l.date
+            ORDER BY d.date ASC
             """
             
             result = self.client.execute(query, {
@@ -677,23 +671,15 @@ class ClickHouseService:
                 'days': days
             })
             
-            # Группируем по дате
-            timeline = {}
-            for row in result:
-                date_str = row[0].strftime('%Y-%m-%d')
-                if date_str not in timeline:
-                    timeline[date_str] = {'date': date_str, 'search_count': 0, 'listening_count': 0}
-                
-                if row[2] == 'search':
-                    timeline[date_str]['search_count'] = row[1]
-                elif row[2] == 'listening':
-                    timeline[date_str]['listening_count'] = row[1]
-            
-            # Конвертируем в список и сортируем по дате
-            timeline_list = list(timeline.values())
-            timeline_list.sort(key=lambda x: x['date'], reverse=True)
-            
-            return timeline_list
+            return [
+                {
+                    'date': row[0].strftime('%Y-%m-%d'),
+                    'search_count': row[1],
+                    'listening_count': row[2],
+                    'session_count': row[3]
+                }
+                for row in result
+            ]
         except Exception as e:
             print(f"Error getting user activity timeline: {e}")
             return []
@@ -748,11 +734,12 @@ class ClickHouseService:
             SELECT 
                 count() as total_plays,
                 uniq(track_id) as unique_tracks,
-                sum(duration_ms) as total_duration_ms,
+                sum(duration_played_ms) as total_duration_ms,
                 uniq(artist_id) as unique_artists
             FROM track_analytics 
             WHERE user_id = %(user_id)s 
                 AND timestamp >= subtractDays(now(), %(days)s)
+                AND action = 'play'
             """
             
             result = self.client.execute(query, {
@@ -778,6 +765,19 @@ class ClickHouseService:
             print(f"Error getting user listening stats: {e}")
             return {"total_plays": 0, "unique_tracks": 0, "unique_artists": 0, "total_duration_hours": 0, "total_duration_ms": 0}
 
+    def _get_days_for_period(self, period: str) -> int:
+        """Конвертирует период в количество дней"""
+        period_map = {
+            "7d": 7,
+            "30d": 30, 
+            "90d": 90,
+            "day": 1,
+            "week": 7,
+            "month": 30,
+            "year": 365
+        }
+        return period_map.get(period, 30)
+
     async def get_user_top_tracks(self, user_id: int, period: str = "week", limit: int = 10) -> List[Dict[str, Any]]:
         """Получить топ треков пользователя"""
         if not self.client:
@@ -789,15 +789,15 @@ class ClickHouseService:
             query = """
             SELECT 
                 track_id,
-                track_name,
-                artist_name,
+                artist_id,
                 count() as play_count,
-                sum(duration_ms) as total_duration_ms,
-                avg(duration_ms) as avg_duration_ms
+                sum(duration_played_ms) as total_duration_ms,
+                avg(duration_played_ms) as avg_duration_ms
             FROM track_analytics 
             WHERE user_id = %(user_id)s 
                 AND timestamp >= subtractDays(now(), %(days)s)
-            GROUP BY track_id, track_name, artist_name
+                AND action = 'play'
+            GROUP BY track_id, artist_id
             ORDER BY play_count DESC, total_duration_ms DESC
             LIMIT %(limit)s
             """
@@ -812,12 +812,13 @@ class ClickHouseService:
             for row in result:
                 track = {
                     "track_id": row[0],
-                    "track_name": row[1],
-                    "artist_name": row[2],
-                    "play_count": row[3],
-                    "total_duration_ms": row[4],
-                    "avg_duration_ms": round(row[5], 0) if row[5] else 0,
-                    "total_hours": round((row[4] or 0) / (1000 * 60 * 60), 1)
+                    "artist_id": row[1],
+                    "title": f"Track {row[0]}",  # Placeholder, will be replaced with actual data
+                    "artist_name": f"Artist {row[1]}",  # Placeholder, will be replaced with actual data
+                    "play_count": row[2],
+                    "total_duration_ms": row[3],
+                    "avg_duration_ms": round(row[4], 0) if row[4] else 0,
+                    "total_hours": round((row[3] or 0) / (1000 * 60 * 60), 1)
                 }
                 top_tracks.append(track)
             

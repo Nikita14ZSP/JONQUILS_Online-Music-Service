@@ -55,11 +55,11 @@ async def test_clickhouse_service():
             print("❌ Ошибка вставки данных")
         
         # Проверяем количество записей
-        count_result = await service.execute_query("SELECT COUNT(*) as count FROM jonquils_analytics.listening_events")
-        print(f"📊 Количество записей в listening_events: {count_result}")
+        count_result = await service.execute_query("SELECT COUNT(*) as count FROM jonquils_analytics.track_analytics")
+        print(f"📊 Количество записей в track_analytics: {count_result}")
         
         # Тестируем аналитику
-        analytics = await service.get_track_analytics(track_id=1, days=30)
+        analytics = await service.get_track_stats(track_id=1, days=30)
         print(f"📈 Аналитика трека: {analytics}")
         
         await service.close()

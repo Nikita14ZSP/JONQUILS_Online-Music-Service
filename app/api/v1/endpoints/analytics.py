@@ -1,3 +1,7 @@
+"""
+Эндпоинты для аналитики
+"""
+
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import time
@@ -27,8 +31,8 @@ async def record_listening_event(
     await analytics_service.record_listening_event(
         user_id=event.user_id,
         track_id=event.track_id,
-        timestamp=event.timestamp,
-        play_duration_ms=event.play_duration_ms,
+        listened_at=event.timestamp,
+        duration_listened=event.play_duration_ms,
         source=event.source
     )
     return {"message": "Listening event recorded"}
@@ -42,7 +46,7 @@ async def get_popular_tracks_analytics(
     """
     Получить популярные треки за период.
     """
-    tracks = await analytics_service.get_popular_tracks(period=period, limit=limit)
+    tracks = await analytics_service.get_top_tracks(limit=limit)
     return {"period": period, "popular_tracks": tracks}
 
 @router.get("/popular-artists", summary="Получить популярных исполнителей")
@@ -54,7 +58,7 @@ async def get_popular_artists_analytics(
     """
     Получить популярных исполнителей за период.
     """
-    artists = await analytics_service.get_popular_artists(period=period, limit=limit)
+    artists = await analytics_service.get_top_artists(period=period, limit=limit)
     return {"period": period, "popular_artists": artists}
 
 @router.get("/user/{user_id}/stats", response_model=AnalyticsStats, summary="Статистика пользователя")
@@ -435,35 +439,110 @@ async def get_user_search_history(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка получения истории поисков: {str(e)}")
 
-@router.get("/user/{user_id}", summary="Получить аналитику пользователя")
-async def get_user_analytics(
-    user_id: int = Path(...),
-    period: str = Query(default="week", regex="^(day|week|month|year)$"),
+@router.get("/user/{user_id}", summary="Получить аналитику конкретного пользователя")
+async def get_user_analytics_by_id(
+    user_id: int = Path(..., title="ID пользователя", ge=1),
+    period: str = Query(default="30d", regex="^(7d|30d|90d)$", description="Период: 7d, 30d, 90d"),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Получить аналитику конкретного пользователя.
+    Получить аналитику активности пользователя по ID:
+    - История поисков
+    - Топ треков по прослушиваниям  
+    - Активность по времени
+    - Статистика использования
     """
-    # Проверяем, что пользователь может просматривать эту аналитику
-    if current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
     try:
-        # Получаем аналитику из ClickHouse
-        search_stats = await clickhouse_service.get_user_search_stats(user_id, period)
-        listening_stats = await clickhouse_service.get_user_listening_stats(user_id, period)
-        activity_timeline = await clickhouse_service.get_user_activity_timeline(user_id, period)
-        top_tracks = await clickhouse_service.get_user_top_tracks(user_id, period)
-        recent_searches = await clickhouse_service.get_user_recent_searches(user_id, limit=10)
+        # Проверяем, что пользователь запрашивает свою аналитику или является администратором
+        if current_user.id != user_id and current_user.role != 'admin':
+            raise HTTPException(status_code=403, detail="Доступ запрещен")
+        
+        # Конвертируем период в дни
+        days_map = {'7d': 7, '30d': 30, '90d': 90}
+        days = days_map.get(period, 30)
+        
+        # Получаем статистику поисков
+        search_history = await clickhouse_service.get_user_search_history(user_id, days)
+        search_count = len(search_history)
+        unique_queries = len(set(item['search_query'] for item in search_history))
+        clicked_searches = sum(1 for item in search_history if item.get('clicked_result_id'))
+        click_through_rate = clicked_searches / search_count if search_count > 0 else 0
+        avg_results = sum(item['results_count'] for item in search_history) / search_count if search_count > 0 else 0
+        
+        # Получаем топ треки пользователя
+        top_tracks_data = await clickhouse_service.get_user_top_tracks(user_id, days)
+        
+        # Получаем общую статистику прослушиваний
+        listening_data = await clickhouse_service.get_user_listening_stats(user_id, days)
+        total_plays = listening_data.get('total_plays', 0)
+        total_duration = listening_data.get('total_duration_sec', 0)
+        unique_tracks = listening_data.get('unique_tracks', 0)
+        avg_session_length = listening_data.get('avg_session_length_sec', 0)
+        
+        # Получаем активность по дням (последние 30 дней)
+        activity_timeline = await clickhouse_service.get_user_activity_timeline(user_id, min(days, 30))
+        
+        # Подсчитываем общую активность
+        active_days = len([day for day in activity_timeline if day.get('search_count', 0) + day.get('listening_count', 0) > 0])
+        total_sessions = sum(day.get('session_count', 1) for day in activity_timeline)
+        total_activity = search_count + total_plays
+        avg_daily_activity = total_activity / days if days > 0 else 0
+        
+        # Формируем топ треки с дополнительной информацией
+        formatted_top_tracks = []
+        max_plays = max([track.get('play_count', 0) for track in top_tracks_data]) if top_tracks_data else 1
+        
+        for track in top_tracks_data[:10]:
+            formatted_top_tracks.append({
+                'track_id': track.get('track_id'),
+                'title': track.get('title', f"Track {track.get('track_id')}"),
+                'artist_name': track.get('artist_name', 'Unknown Artist'),
+                'play_count': track.get('play_count', 0),
+                'total_duration': track.get('total_duration_sec', 0),
+                'percentage': (track.get('play_count', 0) / max_plays * 100) if max_plays > 0 else 0
+            })
+        
+        # Формируем историю поисков
+        formatted_search_history = []
+        for search in search_history[-10:]:  # Последние 10 поисков
+            formatted_search_history.append({
+                'query': search.get('search_query', ''),
+                'timestamp': search.get('timestamp', ''),
+                'results_count': search.get('results_count', 0),
+                'clicked': bool(search.get('clicked_result_id'))
+            })
+        
+        # Формируем временную линию активности
+        formatted_timeline = []
+        for day in activity_timeline:
+            formatted_timeline.append({
+                'date': day.get('date', ''),
+                'search_count': day.get('search_count', 0),
+                'listening_count': day.get('listening_count', 0)
+            })
         
         return {
-            "user_id": user_id,
-            "period": period,
-            "search_stats": search_stats,
-            "listening_stats": listening_stats,
-            "activity_timeline": activity_timeline,
-            "top_tracks": top_tracks,
-            "recent_searches": recent_searches
+            "search_stats": {
+                "total_searches": search_count,
+                "unique_queries": unique_queries,
+                "avg_results_per_search": round(avg_results, 1),
+                "click_through_rate": round(click_through_rate, 3)
+            },
+            "listening_stats": {
+                "total_plays": total_plays,
+                "total_duration": total_duration,
+                "unique_tracks": unique_tracks,
+                "avg_session_length": avg_session_length
+            },
+            "activity_stats": {
+                "active_days": active_days,
+                "total_sessions": total_sessions,
+                "avg_daily_activity": round(avg_daily_activity, 1)
+            },
+            "search_history": formatted_search_history,
+            "top_tracks": formatted_top_tracks,
+            "activity_timeline": formatted_timeline
         }
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get user analytics: {str(e)}")
