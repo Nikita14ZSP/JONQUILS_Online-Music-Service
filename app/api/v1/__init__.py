@@ -8,7 +8,8 @@ from app.api.v1.endpoints import (  # noqa
     tracks,
     upload,
     users,
-    analytics
+    analytics,
+    s3
 )
 
 api_router = APIRouter()
@@ -20,3 +21,4 @@ api_router.include_router(search.router, tags=["Search"], prefix="/search")
 api_router.include_router(upload.router, tags=["Upload"], prefix="/upload")
 api_router.include_router(users.router, tags=["Users"], prefix="/users")
 api_router.include_router(analytics.router, tags=["Analytics"], prefix="/analytics")
+api_router.include_router(s3.router, tags=["S3 Storage"], prefix="/s3")

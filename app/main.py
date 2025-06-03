@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.routing import Mount
+from fastapi.responses import JSONResponse
 import uvicorn
 import logging
 
@@ -64,19 +65,24 @@ def root():
         "redoc": "/redoc"
     }
 
-@app.get("/health", summary="Проверка состояния API")
-def health_check():
-    """
-    Проверка работоспособности API.
-    """
-    return {"status": "healthy", "service": "music-api"}
-
 @app.get("/ping", summary="Check if the API is alive")
 def pong():
     """
     Sanity check for the API.
     """
     return {"ping": "pong!"}
+
+@app.get("/health", summary="Проверка состояния API")
+async def health_check():
+    """Health check эндпоинт для Docker"""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "healthy",
+            "service": "jonquils-backend",
+            "version": "1.0.0"
+        }
+    )
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

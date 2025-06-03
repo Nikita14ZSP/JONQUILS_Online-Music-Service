@@ -2,12 +2,15 @@ from typing import List, Optional, Dict, Any, Union
 from elasticsearch import AsyncElasticsearch
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_
+import logging
 
 from app.db.models import Track, Artist, Album, Genre
 from app.schemas.track import TrackWithDetails, TrackSearchQuery, TrackSearchResponse
 from app.schemas.artist import Artist as ArtistSchema
 from app.schemas.album import Album as AlbumSchema
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class SearchService:
@@ -26,10 +29,12 @@ class SearchService:
                 settings.ELASTICSEARCH_PASSWORD
             )
         
-        # self.es = AsyncElasticsearch(**es_config)
-        # Пока используем заглушку, потом подключим Elasticsearch
-        self.es = AsyncElasticsearch(**es_config) # Активируем Elasticsearch
-        # self.es = None # Закомментируем заглушку
+        # Пытаемся подключиться к Elasticsearch с обработкой ошибок
+        try:
+            self.es = AsyncElasticsearch(**es_config)
+        except Exception as e:
+            logger.warning(f"Failed to initialize Elasticsearch: {e}")
+            self.es = None  # Используем заглушку при ошибке
     
     async def index_track(self, track: Track, artist_name: str = None, album_title: str = None, genre_name: str = None):
         """Индексация трека в Elasticsearch"""

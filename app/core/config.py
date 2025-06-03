@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: Optional[str] = None
     REDIS_DB: int = 0
 
+    # S3/MinIO настройки для хранения файлов
+    S3_ENDPOINT_URL: str = "http://localhost:9002"
+    S3_ACCESS_KEY: str = "minioadmin"
+    S3_SECRET_KEY: str = "minioadmin123"
+    S3_REGION: str = "us-east-1"
+    S3_TRACKS_BUCKET: str = "tracks"
+    S3_COVERS_BUCKET: str = "covers"
+    S3_PLAYLISTS_BUCKET: str = "playlists"
+    S3_TEMP_BUCKET: str = "temp"
+
     # Настройки безопасности
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
@@ -61,7 +71,15 @@ class Settings(BaseSettings):
 
     # Настройки для файлов
     UPLOAD_DIR: str = "uploads"
-    MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
+    MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB для треков
+    MAX_COVER_SIZE: int = 10 * 1024 * 1024  # 10MB для обложек
+
+    # ETL и Airflow настройки
+    AIRFLOW_WEBSERVER_URL: str = "http://localhost:8080"
+    AIRFLOW_USERNAME: str = "admin"
+    AIRFLOW_PASSWORD: str = "admin123"
+    ETL_BATCH_SIZE: int = 1000
+    ETL_RETRY_ATTEMPTS: int = 3
 
     # CORS настройки
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]

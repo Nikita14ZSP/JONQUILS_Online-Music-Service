@@ -38,9 +38,9 @@ class AlbumService:
             title=album_data.title,
             artist_id=album_data.artist_id,
             release_date=album_data.release_date,
-            genre=album_data.genre,
-            cover_url=album_data.cover_url,
-            description=album_data.description
+            genre_id=album_data.genre_id,
+            cover_image_url=album_data.cover_image_url,
+            spotify_id=album_data.spotify_id
         )
         
         self.db.add(db_album)

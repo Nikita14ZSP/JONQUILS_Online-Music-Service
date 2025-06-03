@@ -1,0 +1,23 @@
+# Основные зависимости для ETL пайплайна
+boto3==1.35.72
+botocore==1.35.72
+pandas==2.2.3
+clickhouse-driver==0.2.9
+requests==2.32.3
+psycopg2-binary==2.9.10
+sqlalchemy==2.0.36
+
+# Airflow провайдеры (обновленные версии)
+apache-airflow-providers-postgres==5.12.0
+apache-airflow-providers-amazon==8.27.0
+apache-airflow-providers-http==4.12.1
+apache-airflow-providers-elasticsearch==5.4.0
+
+# Дополнительные библиотеки
+python-dateutil==2.9.0
+pytz>=2023.3
+orjson==3.10.12
+
+# Обработка аудио (опционально)
+# mutagen==1.47.0
+# python-magic==0.4.27
