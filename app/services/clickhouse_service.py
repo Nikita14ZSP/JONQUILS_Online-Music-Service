@@ -36,7 +36,9 @@ class ClickHouseService:
                 port=settings.CLICKHOUSE_PORT,
                 user=settings.CLICKHOUSE_USER,
                 password=settings.CLICKHOUSE_PASSWORD,
-                database=settings.CLICKHOUSE_DATABASE
+                database=settings.CLICKHOUSE_DATABASE,
+                connect_timeout=10, 
+                send_receive_timeout=60
             )
             # Временно отключаем проверку соединения при инициализации
             # self.client.execute('SELECT 1')
@@ -45,27 +47,83 @@ class ClickHouseService:
             print(f"❌ Failed to configure ClickHouse client: {e}")
             self.client = None
     
-    async def test_connection(self):
-        """Тестируем подключение к ClickHouse"""
+    async def test_connection(self, retries=5, delay_seconds=5):
+        """Тестируем подключение к ClickHouse с ретраями"""
         if not self.client:
-            raise Exception("ClickHouse client not initialized")
+            print("⚠️ ClickHouse client not configured. Attempting to initialize...")
+            self._initialize_client() # Synchronous call
+            if not self.client:
+                # If still not initialized after re-attempt, raise an error.
+                # This ensures that we don't proceed with a None client.
+                raise Exception("ClickHouse client could not be initialized.")
+
+        last_exception = None
+        for attempt in range(retries):
+            try:
+                print(f"Attempting to connect to ClickHouse (attempt {attempt + 1}/{retries})...")
+                # The clickhouse-driver's execute is synchronous.
+                # To call it in an async function without blocking the event loop,
+                # it should be run in a thread pool.
+                loop = asyncio.get_event_loop()
+                # Ensure self.client is not None before trying to access execute
+                if not self.client: 
+                    # This should ideally be caught by the initial check, but as a safeguard:
+                    raise AttributeError("ClickHouse client is None, cannot execute query.")
+                
+                result = await loop.run_in_executor(None, self.client.execute, 'SELECT 1')
+                
+                if result and result[0][0] == 1:
+                    print("✅ Successfully connected to ClickHouse.")
+                    return True
+                else:
+                    print(f"⚠️ Connected to ClickHouse, but 'SELECT 1' returned unexpected result: {result}")
+                    last_exception = Exception(f"Unexpected result from 'SELECT 1': {result}")
+            
+            except ClickHouseError as e: # Catch specific ClickHouse errors
+                print(f"❌ ClickHouse connection attempt {attempt + 1} failed with ClickHouseError: {e}")
+                last_exception = e
+            except AttributeError as e: # Catch errors if self.client is None
+                print(f"❌ ClickHouse client attribute error attempt {attempt + 1}: {e}")
+                last_exception = e
+                # If client is None, re-initialization might be needed or it's a permanent config issue.
+                # For simplicity here, we let retries continue, but a more robust handler might re-init.
+            except Exception as e: # Catch other potential errors
+                print(f"❌ An unexpected error occurred during ClickHouse connection attempt {attempt + 1}: {e}")
+                last_exception = e
+            
+            if attempt < retries - 1:
+                print(f"Retrying in {delay_seconds} seconds...")
+                await asyncio.sleep(delay_seconds)
+            else:
+                print("❌ All retry attempts to connect to ClickHouse failed.")
         
-        try:
-            result = self.client.execute('SELECT 1')
-            return result[0][0] == 1
-        except Exception as e:
-            raise Exception(f"Failed to test ClickHouse connection: {e}")
+        if last_exception:
+            # Ensure a clear exception is raised if all retries fail
+            raise Exception(f"Failed to establish ClickHouse connection after {retries} attempts. Last error: {last_exception}")
+        
+        # This line should ideally be unreachable if logic is correct and last_exception is always set on failure
+        return False
     
     async def create_tables(self):
         """Создание таблиц ClickHouse для аналитики"""
         if not self.client:
-            print("⚠️ ClickHouse client not available, skipping table creation")
-            return
+            print("⚠️ ClickHouse client not configured prior to create_tables. Attempting to initialize...")
+            self._initialize_client()
+            if not self.client: # Check again after attempt
+                print("❌ ClickHouse client still not available after explicit init in create_tables, skipping table creation.")
+                return
         
         try:
-            # Проверяем подключение
-            await self.test_connection()
-            print("✅ ClickHouse connection successful")
+            connection_successful = await self.test_connection()
+            
+            if not connection_successful:
+                # This path should ideally not be taken if test_connection raises an exception on failure.
+                # However, as a safeguard:
+                print("❌ ClickHouse connection could not be established after retries (checked in create_tables). Skipping table creation.")
+                return
+            
+            # If test_connection was successful, this print is redundant but confirms flow.
+            print("✅ ClickHouse connection confirmed by create_tables.")
             
             # Создаем базу данных если не существует
             self.client.execute("CREATE DATABASE IF NOT EXISTS jonquils_analytics")

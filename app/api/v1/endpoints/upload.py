@@ -27,7 +27,8 @@ async def create_upload_file(
     # Генерируем уникальное имя файла для предотвращения коллизий
     # Можно использовать UUID или добавить к имени timestamp
     file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"{track_data.title}_{datetime.now().strftime("%Y%m%d%H%M%S")}{file_extension}"
+    timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
+    unique_filename = f"{track_data.title}_{timestamp_str}{file_extension}"
     file_location = os.path.join(UPLOAD_DIR, unique_filename)
     relative_file_path = f"static/tracks/{unique_filename}" # Путь для сохранения в БД
 
@@ -100,7 +101,8 @@ async def create_upload_album(
             )
 
         file_extension = os.path.splitext(file.filename)[1]
-        unique_filename = f"{track_meta.title}_{datetime.now().strftime("%Y%m%d%H%M%S")}{file_extension}"
+        timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_filename = f"{track_meta.title}_{timestamp_str}{file_extension}"
         file_location = os.path.join(UPLOAD_DIR, unique_filename)
         relative_file_path = f"static/tracks/{unique_filename}"
 
