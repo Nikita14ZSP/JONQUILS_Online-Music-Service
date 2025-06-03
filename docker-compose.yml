@@ -18,8 +18,8 @@ services:
     image: clickhouse/clickhouse-server:23.8
     container_name: clickhouse
     ports:
-      - "9000:9000"
-      - "8123:8123"
+      - "9001:9000/tcp"
+      - "8124:8123/tcp"
     environment:
       - CLICKHOUSE_DB=jonquils_analytics
       - CLICKHOUSE_USER=admin
@@ -38,10 +38,75 @@ services:
       timeout: 10s
       retries: 3
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: --config.file=/etc/prometheus/prometheus.yml
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - jonquils-network
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - jonquils-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - jonquils-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=dev
+    volumes:
+      - ./app:/app
+    networks:
+      - jonquils-network
+    dns:
+      - 192.168.65.7
+    depends_on:
+      - elasticsearch
+      - clickhouse
+    restart: unless-stopped
+
 networks:
   jonquils-network:
     driver: bridge
 
 volumes:
   esdata:
-  clickhouse_data: 
+  clickhouse_data:
+  grafana_data: 

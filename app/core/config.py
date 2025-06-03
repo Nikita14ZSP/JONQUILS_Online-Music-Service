@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         )
 
     # ClickHouse настройки для аналитики
-    CLICKHOUSE_HOST: str = "localhost"
+    CLICKHOUSE_HOST: str = "clickhouse"
     CLICKHOUSE_PORT: int = 9000
     CLICKHOUSE_USER: str = "admin"
     CLICKHOUSE_PASSWORD: str = "admin123"

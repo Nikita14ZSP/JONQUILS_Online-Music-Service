@@ -6,7 +6,7 @@ python-dotenv==1.0.1
 
 # Database
 sqlalchemy==2.0.36
-asyncpg==0.31.0
+asyncpg==0.30.0
 alembic==1.14.0
 psycopg2-binary==2.9.10
 
@@ -15,8 +15,8 @@ elasticsearch==8.17.0
 
 # ClickHouse для аналитики
 clickhouse-driver[numpy]==0.2.9
-clickhouse-sqlalchemy==0.4.0
-numpy==2.1.3
+clickhouse-sqlalchemy==0.3.2
+numpy==1.26.4
 
 # Redis для кеширования
 redis==5.2.1
@@ -58,3 +58,5 @@ orjson==3.10.12
 
 # UUID генерация - встроено в Python 3.7+
 # python-dateutil уже включен в зависимости
+
+prometheus-fastapi-instrumentator
