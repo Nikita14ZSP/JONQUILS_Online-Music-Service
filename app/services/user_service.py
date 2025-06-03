@@ -2,9 +2,13 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from fastapi import HTTPException, status # Импортируем HTTPException
 
-from app.db.models import User
+from app.db.models import User, Artist, UserPreference # Импортируем UserPreference
 from app.schemas.user import UserCreate, UserUpdate
+# app.schemas.auth.RegisterRequest используется для тайп-хинтинга в create_user, импортируем его
+from app.schemas.auth import RegisterRequest as RegisterRequestSchema
+from app.schemas.artist import ArtistCreate # Для создания артиста
 
 
 class UserService:
@@ -35,9 +39,8 @@ class UserService:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def create_user(self, user_data: UserCreate) -> User:
-        """Создать нового пользователя."""
-        # В реальном приложении здесь должно быть хеширование пароля
+    async def create_user(self, user_data: RegisterRequestSchema) -> User: # Изменяем тип user_data
+        """Создать нового пользователя и, если это артист, его профиль."""
         from passlib.context import CryptContext
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         
@@ -48,12 +51,46 @@ class UserService:
             email=user_data.email,
             hashed_password=hashed_password,
             full_name=user_data.full_name,
+            role=user_data.role, # Добавляем роль
             is_active=True
         )
         
         self.db.add(db_user)
+        await self.db.flush() # Используем flush, чтобы получить ID пользователя для связи с артиста
+
+        if user_data.role == "artist":
+            if not user_data.artist_name:
+                await self.db.rollback() # Откатываем транзакцию, если имя артиста не предоставлено
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Artist name is required for artist role."
+                )
+            
+            # Убедимся, что artist_profile_data создается корректно
+            artist_create_data = {
+                "name": user_data.artist_name
+            }
+            if user_data.bio is not None: # Добавляем поля только если они есть
+                artist_create_data["bio"] = user_data.bio
+            if user_data.country is not None:
+                artist_create_data["country"] = user_data.country
+            if user_data.image_url is not None:
+                artist_create_data["image_url"] = user_data.image_url
+
+            artist_profile_data = ArtistCreate(**artist_create_data)
+            
+            db_artist = Artist(
+                **artist_profile_data.model_dump(exclude_unset=True), # Используем exclude_unset
+                user_id=db_user.id  # Связываем артиста с пользователем
+            )
+            self.db.add(db_artist)
+        
         await self.db.commit()
         await self.db.refresh(db_user)
+        # Загружаем связанный профиль артиста, если он был создан
+        if db_user.role == "artist":
+            await self.db.refresh(db_user, relationship_names=["artist_profile"])
+
         return db_user
 
     async def update_user(self, user_id: int, user_data: UserUpdate) -> Optional[User]:
@@ -121,7 +158,7 @@ class UserService:
         
         return user.playlists
 
-    async def get_user_preferences(self, user_id: int) -> Optional:
+    async def get_user_preferences(self, user_id: int) -> Optional[List[UserPreference]]:
         """Получить предпочтения пользователя."""
         query = select(User).options(selectinload(User.preferences)).where(User.id == user_id)
         result = await self.db.execute(query)
@@ -131,3 +168,18 @@ class UserService:
             return None
         
         return user.preferences
+
+    async def get_user_with_artist_profile(self, user_id: int) -> Optional[User]:
+        """Получить пользователя с загруженным профилем артиста."""
+        query = select(User).options(selectinload(User.artist_profile)).where(User.id == user_id)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return None
+            
+        # Если у пользователя есть профиль артиста, добавляем artist_profile_id в ответ
+        if user.artist_profile:
+            user.artist_profile_id = user.artist_profile.id
+            
+        return user

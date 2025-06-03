@@ -34,17 +34,33 @@ async def read_tracks(
 @router.post("/", response_model=Track, status_code=201, summary="Создать новый трек")
 async def create_track(
     track_in: TrackCreate = Body(...),
-    track_service: TrackService = Depends(get_track_service)
+    track_service: TrackService = Depends(get_track_service),
+    search_service: SearchService = Depends(get_search_service)
 ):
     """
     Создать новый трек.
     """
-    return await track_service.create_track(track_data=track_in)
+    created_track = await track_service.create_track(track_data=track_in)
+    
+    # Индексируем новый трек в Elasticsearch
+    if created_track:
+        # Получаем полные детали для индексации
+        full_track_details = await track_service.get_track_with_details(created_track.id)
+        if full_track_details:
+            await search_service.index_track(
+                track=created_track,
+                artist_name=full_track_details.artist_name,
+                album_title=full_track_details.album_title,
+                genre_name=full_track_details.genre_name
+            )
+    
+    return created_track
 
 @router.post("/upload-from-url/", response_model=TrackUploadResponse, summary="Загрузить трек по URL")
 async def upload_track_from_url(
     track_data: TrackUploadFromURL = Body(...),
-    track_service: TrackService = Depends(get_track_service)
+    track_service: TrackService = Depends(get_track_service),
+    search_service: SearchService = Depends(get_search_service)
 ):
     """
     Загрузить трек по URL.
@@ -55,6 +71,17 @@ async def upload_track_from_url(
     
     if not success:
         raise HTTPException(status_code=400, detail=message)
+    
+    # Индексируем загруженный трек в Elasticsearch, если он успешно создан
+    if track:
+        full_track_details = await track_service.get_track_with_details(track.id) # Получаем полные детали
+        if full_track_details:
+            await search_service.index_track(
+                track=track,
+                artist_name=full_track_details.artist_name,
+                album_title=full_track_details.album_title,
+                genre_name=full_track_details.genre_name
+            )
     
     return TrackUploadResponse(
         success=True,
@@ -71,6 +98,7 @@ async def search_tracks_endpoint(
     artist: Optional[str] = Query(None, description="Фильтр по исполнителю"),
     album: Optional[str] = Query(None, description="Фильтр по альбому"),
     limit: int = Query(default=10, ge=1, le=50),
+    offset: int = Query(default=0, ge=0, description="Смещение для пагинации"),
     search_service: SearchService = Depends(get_search_service)
 ):
     """
@@ -82,9 +110,10 @@ async def search_tracks_endpoint(
         year=year,
         artist=artist,
         album=album,
-        limit=limit
+        limit=limit,
+        offset=offset
     )
-    return TrackSearchResponse(results=results, total=len(results))
+    return results
 
 @router.get("/{track_id}", response_model=Track, summary="Получить трек по ID")
 async def read_track(
@@ -103,7 +132,8 @@ async def read_track(
 async def update_track(
     track_id: int = Path(..., title="ID трека", ge=1),
     track_update: TrackUpdate = Body(...),
-    track_service: TrackService = Depends(get_track_service)
+    track_service: TrackService = Depends(get_track_service),
+    search_service: SearchService = Depends(get_search_service)
 ):
     """
     Обновить информацию о треке.
@@ -111,12 +141,24 @@ async def update_track(
     updated_track = await track_service.update_track(track_id=track_id, track_data=track_update)
     if updated_track is None:
         raise HTTPException(status_code=404, detail="Track not found")
+    
+    # Обновляем трек в Elasticsearch
+    full_track_details = await track_service.get_track_with_details(updated_track.id)
+    if full_track_details:
+        await search_service.index_track(
+            track=updated_track,
+            artist_name=full_track_details.artist_name,
+            album_title=full_track_details.album_title,
+            genre_name=full_track_details.genre_name
+        )
+    
     return updated_track
 
 @router.delete("/{track_id}", status_code=204, summary="Удалить трек")
 async def delete_track(
     track_id: int = Path(..., title="ID трека", ge=1),
-    track_service: TrackService = Depends(get_track_service)
+    track_service: TrackService = Depends(get_track_service),
+    search_service: SearchService = Depends(get_search_service)
 ):
     """
     Удалить трек.
@@ -124,6 +166,9 @@ async def delete_track(
     deleted = await track_service.delete_track(track_id=track_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Track not found")
+    
+    # Удаляем трек из Elasticsearch
+    await search_service.delete_entity(index="tracks", entity_id=track_id)
 
 @router.post("/{track_id}/listen", status_code=204, summary="Записать прослушивание трека")
 async def record_track_listen(

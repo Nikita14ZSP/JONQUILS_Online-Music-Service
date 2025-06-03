@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
+from starlette.routing import Mount
 import uvicorn
 import logging
 
 from app.api.v1 import api_router as api_router_v1
 from app.core.config import settings
 from app.services.clickhouse_service import ClickHouseService
+from app.core.analytics_middleware import AnalyticsMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -16,27 +19,32 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Настройка CORS для фронтенда
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В продакшене указать конкретные домены
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Инициализация ClickHouse при запуске
+
+app.add_middleware(AnalyticsMiddleware)
+
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
 async def initialize_clickhouse():
     """Инициализация таблиц ClickHouse при запуске приложения."""
     try:
         from app.services.clickhouse_service import clickhouse_service
+        
+        # Создаем таблицы ClickHouse
         await clickhouse_service.create_tables()
         logger.info("ClickHouse tables initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize ClickHouse: {e}")
-        # Не останавливаем приложение, если ClickHouse недоступен
-        # В продакшене можно изменить поведение
-
+        
 @app.on_event("startup")
 async def startup_event():
     """События при запуске приложения."""

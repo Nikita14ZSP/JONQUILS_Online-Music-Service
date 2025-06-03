@@ -33,4 +33,4 @@ class ArtistWithStats(ArtistInDBBase):
     total_tracks: int = 0
     total_albums: int = 0
     total_plays: int = 0
-    monthly_listeners: int = 0 
+    monthly_listeners: int = 0

@@ -15,6 +15,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     is_premium = Column(Boolean, default=False)
+    role = Column(String(50), default="listener", nullable=False)  # Добавлено поле role
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -22,11 +23,13 @@ class User(Base):
     playlists = relationship("Playlist", back_populates="user")
     listening_history = relationship("ListeningHistory", back_populates="user")
     user_preferences = relationship("UserPreference", back_populates="user")
+    artist_profile = relationship("Artist", back_populates="user", uselist=False) # Связь с профилем артиста
 
 class Artist(Base):
     __tablename__ = "artists"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=True, index=True) # Связь с User
     name = Column(String(255), nullable=False, index=True)
     bio = Column(Text)
     country = Column(String(100))
@@ -35,6 +38,7 @@ class Artist(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Связи
+    user = relationship("User", back_populates="artist_profile") # Обратная связь с User
     albums = relationship("Album", back_populates="artist")
     tracks = relationship("Track", back_populates="artist")
 

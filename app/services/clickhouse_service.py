@@ -2,6 +2,7 @@
 ClickHouse сервис для аналитики
 """
 import asyncio
+import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from clickhouse_driver import Client
@@ -21,21 +22,27 @@ class ClickHouseService:
     def _initialize_client(self):
         """Инициализация клиента ClickHouse"""
         try:
-            # Используем пустую строку если пароль не задан
-            password = settings.CLICKHOUSE_PASSWORD or ""
+            # Отладочная информация
+            print(f"🔍 Debug ClickHouse settings:")
+            print(f"   HOST: {settings.CLICKHOUSE_HOST}")
+            print(f"   PORT: {settings.CLICKHOUSE_PORT}")
+            print(f"   USER: {settings.CLICKHOUSE_USER}")
+            print(f"   PASSWORD: {settings.CLICKHOUSE_PASSWORD}")
+            print(f"   DATABASE: {settings.CLICKHOUSE_DATABASE}")
             
+            # Используем настройки подключения к ClickHouse в Docker
             self.client = Client(
                 host=settings.CLICKHOUSE_HOST,
                 port=settings.CLICKHOUSE_PORT,
                 user=settings.CLICKHOUSE_USER,
-                password=password,
+                password=settings.CLICKHOUSE_PASSWORD,
                 database=settings.CLICKHOUSE_DATABASE
             )
-            # Проверяем соединение
-            self.client.execute('SELECT 1')
-            print(f"✅ ClickHouse connection established to {settings.CLICKHOUSE_HOST}:{settings.CLICKHOUSE_PORT}")
+            # Временно отключаем проверку соединения при инициализации
+            # self.client.execute('SELECT 1')
+            print(f"✅ ClickHouse client configured for {settings.CLICKHOUSE_HOST}:{settings.CLICKHOUSE_PORT} as {settings.CLICKHOUSE_USER}")
         except Exception as e:
-            print(f"❌ Failed to connect to ClickHouse: {e}")
+            print(f"❌ Failed to configure ClickHouse client: {e}")
             self.client = None
     
     async def test_connection(self):
@@ -48,6 +55,452 @@ class ClickHouseService:
             return result[0][0] == 1
         except Exception as e:
             raise Exception(f"Failed to test ClickHouse connection: {e}")
+    
+    async def create_tables(self):
+        """Создание таблиц ClickHouse для аналитики"""
+        if not self.client:
+            print("⚠️ ClickHouse client not available, skipping table creation")
+            return
+        
+        try:
+            # Проверяем подключение
+            await self.test_connection()
+            print("✅ ClickHouse connection successful")
+            
+            # Создаем базу данных если не существует
+            self.client.execute("CREATE DATABASE IF NOT EXISTS jonquils_analytics")
+            
+            # Переключаемся на базу данных
+            self.client.execute("USE jonquils_analytics")
+            
+            # Определяем DDL команды для создания таблиц
+            tables = [
+                """
+                CREATE TABLE IF NOT EXISTS api_requests_log (
+                    timestamp DateTime DEFAULT now(),
+                    request_id String,
+                    user_id UInt64 DEFAULT 0,
+                    artist_id UInt64 DEFAULT 0,
+                    method String,
+                    endpoint String,
+                    status_code UInt16,
+                    response_time_ms UInt32,
+                    user_agent String DEFAULT '',
+                    ip_address String DEFAULT '',
+                    request_size UInt32 DEFAULT 0,
+                    response_size UInt32 DEFAULT 0,
+                    error_message String DEFAULT '',
+                    session_id String DEFAULT '',
+                    date Date DEFAULT toDate(timestamp)
+                ) ENGINE = MergeTree()
+                PARTITION BY toYYYYMM(date)
+                ORDER BY (timestamp, endpoint, user_id)
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS track_analytics (
+                    timestamp DateTime DEFAULT now(),
+                    track_id UInt64,
+                    artist_id UInt64,
+                    user_id UInt64 DEFAULT 0,
+                    action String,
+                    duration_played_ms UInt32 DEFAULT 0,
+                    track_position_ms UInt32 DEFAULT 0,
+                    platform String DEFAULT 'web',
+                    device_type String DEFAULT 'unknown',
+                    location String DEFAULT '',
+                    session_id String DEFAULT '',
+                    date Date DEFAULT toDate(timestamp)
+                ) ENGINE = MergeTree()
+                PARTITION BY toYYYYMM(date)
+                ORDER BY (timestamp, track_id, user_id)
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS search_analytics (
+                    timestamp DateTime DEFAULT now(),
+                    user_id UInt64 DEFAULT 0,
+                    query String,
+                    results_count UInt32,
+                    search_type String,
+                    clicked_result_id UInt64 DEFAULT 0,
+                    clicked_result_type String DEFAULT '',
+                    session_id String DEFAULT '',
+                    date Date DEFAULT toDate(timestamp)
+                ) ENGINE = MergeTree()
+                PARTITION BY toYYYYMM(date)
+                ORDER BY (timestamp, query, user_id)
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS user_analytics (
+                    timestamp DateTime DEFAULT now(),
+                    user_id UInt64,
+                    action String,
+                    session_duration_minutes UInt32 DEFAULT 0,
+                    pages_visited UInt32 DEFAULT 1,
+                    tracks_played UInt32 DEFAULT 0,
+                    searches_made UInt32 DEFAULT 0,
+                    session_id String DEFAULT '',
+                    date Date DEFAULT toDate(timestamp)
+                ) ENGINE = MergeTree()
+                PARTITION BY toYYYYMM(date)
+                ORDER BY (timestamp, user_id)
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS artist_analytics (
+                    timestamp DateTime DEFAULT now(),
+                    artist_id UInt64,
+                    action String,
+                    target_id UInt64 DEFAULT 0,
+                    metadata_key String DEFAULT '',
+                    metadata_value String DEFAULT '',
+                    date Date DEFAULT toDate(timestamp)
+                ) ENGINE = MergeTree()
+                PARTITION BY toYYYYMM(date)
+                ORDER BY (timestamp, artist_id)
+                """
+            ]
+            
+            # Создаем каждую таблицу
+            for i, table_ddl in enumerate(tables, 1):
+                try:
+                    self.client.execute(table_ddl)
+                    print(f"✅ Table {i}/5 created successfully")
+                except Exception as e:
+                    print(f"⚠️ Warning: Failed to create table {i}: {e}")
+                    continue
+            
+            print("✅ All ClickHouse tables processed successfully")
+                
+        except Exception as e:
+            print(f"❌ Failed to create ClickHouse tables: {e}")
+            # Не поднимаем исключение, чтобы приложение могло работать без ClickHouse
+    
+    # Методы для логирования API запросов
+    async def log_api_request(self, 
+                            method: str, 
+                            endpoint: str, 
+                            status_code: int,
+                            response_time_ms: int,
+                            user_id: Optional[int] = None,
+                            artist_id: Optional[int] = None,
+                            user_agent: str = "",
+                            ip_address: str = "",
+                            request_size: Optional[int] = None,
+                            response_size: Optional[int] = None,
+                            error_message: Optional[str] = None,
+                            session_id: Optional[str] = None):
+        """Логирование API запроса"""
+        if not self.client:
+            return
+        
+        try:
+            request_id = str(uuid.uuid4())
+            
+            query = """
+            INSERT INTO api_requests_log 
+            (request_id, user_id, artist_id, method, endpoint, status_code, response_time_ms, 
+             user_agent, ip_address, request_size, response_size, error_message, session_id)
+            VALUES
+            """
+            
+            data = [(
+                request_id, 
+                user_id or 0, 
+                artist_id or 0, 
+                method, 
+                endpoint, 
+                status_code, 
+                response_time_ms, 
+                user_agent or '', 
+                ip_address or '', 
+                request_size or 0, 
+                response_size or 0, 
+                error_message or '', 
+                session_id or ''
+            )]
+            
+            self.client.execute(query, data)
+        except Exception as e:
+            print(f"Failed to log API request: {e}")
+    
+
+    async def log_track_action(self,
+                              track_id: int,
+                              artist_id: int,
+                              action: str,
+                              user_id: Optional[int] = None,
+                              duration_played_ms: Optional[int] = None,
+                              track_position_ms: Optional[int] = None,
+                              platform: str = "web",
+                              device_type: str = "unknown",
+                              location: Optional[str] = None,
+                              session_id: Optional[str] = None):
+        """Логирование действий с треками"""
+        if not self.client:
+            return
+        
+        try:
+            query = """
+            INSERT INTO track_analytics 
+            (track_id, artist_id, user_id, action, duration_played_ms, track_position_ms,
+             platform, device_type, location, session_id)
+            VALUES
+            """
+            
+            data = [(
+                track_id, 
+                artist_id, 
+                user_id or 0, 
+                action, 
+                duration_played_ms or 0,
+                track_position_ms or 0, 
+                platform, 
+                device_type, 
+                location or '', 
+                session_id or ''
+            )]
+            
+            self.client.execute(query, data)
+        except Exception as e:
+            print(f"Failed to log track action: {e}")
+    
+    
+    async def log_search_action(self,
+                               query: str,
+                               results_count: int,
+                               search_type: str,
+                               user_id: Optional[int] = None,
+                               clicked_result_id: Optional[int] = None,
+                               clicked_result_type: Optional[str] = None,
+                               session_id: Optional[str] = None):
+        """Логирование поисковых запросов"""
+        if not self.client:
+            return
+        
+        try:
+            sql_query = """
+            INSERT INTO search_analytics 
+            (user_id, query, results_count, search_type, clicked_result_id, 
+             clicked_result_type, session_id)
+            VALUES
+            """
+            
+            data = [(
+                user_id or 0, 
+                query, 
+                results_count, 
+                search_type, 
+                clicked_result_id or 0, 
+                clicked_result_type or '', 
+                session_id or ''
+            )]
+            
+            self.client.execute(sql_query, data)
+        except Exception as e:
+            print(f"Failed to log search action: {e}")
+    
+    
+    async def log_user_action(self,
+                             user_id: int,
+                             action: str,
+                             session_duration_minutes: Optional[int] = None,
+                             pages_visited: int = 1,
+                             tracks_played: int = 0,
+                             searches_made: int = 0,
+                             session_id: Optional[str] = None):
+        """Логирование действий пользователей"""
+        if not self.client:
+            return
+        
+        try:
+            query = """
+            INSERT INTO user_analytics 
+            (user_id, action, session_duration_minutes, pages_visited, 
+             tracks_played, searches_made, session_id)
+            VALUES
+            """
+            
+            data = [(
+                user_id, 
+                action, 
+                session_duration_minutes or 0, 
+                pages_visited,
+                tracks_played, 
+                searches_made, 
+                session_id or ''
+            )]
+            
+            self.client.execute(query, data)
+        except Exception as e:
+            print(f"Failed to log user action: {e}")
+    
+    # Методы для аналитики артистов
+    async def log_artist_action(self,
+                               artist_id: int,
+                               action: str,
+                               target_id: Optional[int] = None,
+                               metadata: Optional[Dict[str, str]] = None):
+        """Логирование действий артистов"""
+        if not self.client:
+            return
+        
+        try:
+            # Обрабатываем metadata как ключ-значение пары
+            metadata_key = ''
+            metadata_value = ''
+            if metadata:
+                # Берем первую пару ключ-значение из словаря
+                first_key = next(iter(metadata.keys()), '')
+                metadata_key = first_key
+                metadata_value = metadata.get(first_key, '')
+            
+            query = """
+            INSERT INTO artist_analytics 
+            (artist_id, action, target_id, metadata_key, metadata_value)
+            VALUES
+            """
+            
+            data = [(
+                artist_id, action, target_id or 0, metadata_key, metadata_value
+            )]
+            
+            self.client.execute(query, data)
+        except Exception as e:
+            print(f"Failed to log artist action: {e}")
+    
+    # Методы для получения аналитики
+    async def get_api_stats(self, days: int = 7) -> Dict[str, Any]:
+        """Получение статистики API за последние дни"""
+        if not self.client:
+            return {}
+        
+        try:
+            query = """
+            SELECT 
+                endpoint,
+                count() as requests,
+                avg(response_time_ms) as avg_response_time,
+                countIf(status_code >= 400) as errors
+            FROM api_requests_log 
+            WHERE date >= today() - {days}
+            GROUP BY endpoint
+            ORDER BY requests DESC
+            """.format(days=days)
+            
+            result = self.client.execute(query)
+            
+            stats = []
+            for row in result:
+                stats.append({
+                    'endpoint': row[0],
+                    'requests': row[1],
+                    'avg_response_time': round(row[2], 2),
+                    'errors': row[3]
+                })
+            
+            return {'endpoints': stats}
+        except Exception as e:
+            print(f"Failed to get API stats: {e}")
+            return {}
+    
+    async def get_track_stats(self, track_id: int, days: int = 30) -> Dict[str, Any]:
+        """Получение статистики трека"""
+        if not self.client:
+            return {}
+        
+        try:
+            query = """
+            SELECT 
+                action,
+                count() as count,
+                uniq(user_id) as unique_users
+            FROM track_analytics 
+            WHERE track_id = {track_id} AND date >= today() - {days}
+            GROUP BY action
+            ORDER BY count DESC
+            """.format(track_id=track_id, days=days)
+            
+            result = self.client.execute(query)
+            
+            stats = {}
+            for row in result:
+                stats[row[0]] = {
+                    'count': row[1],
+                    'unique_users': row[2]
+                }
+            
+            return stats
+        except Exception as e:
+            print(f"Failed to get track stats: {e}")
+            return {}
+    
+    async def get_artist_stats(self, artist_id: int) -> Dict[str, Any]:
+        """Получение статистики артиста"""
+        if not self.client:
+            return {}
+        
+        try:
+           
+            tracks_query = """
+            SELECT 
+                count() as total_plays,
+                uniq(user_id) as unique_listeners,
+                countIf(action = 'like') as total_likes
+            FROM track_analytics 
+            WHERE artist_id = {artist_id} AND date >= today() - 30
+            """.format(artist_id=artist_id)
+            
+            tracks_result = self.client.execute(tracks_query)
+            
+            
+            actions_query = """
+            SELECT 
+                action,
+                count() as count
+            FROM artist_analytics 
+            WHERE artist_id = {artist_id} AND date >= today() - 30
+            GROUP BY action
+            """.format(artist_id=artist_id)
+            
+            actions_result = self.client.execute(actions_query)
+            
+            stats = {
+                'tracks': {
+                    'total_plays': tracks_result[0][0] if tracks_result else 0,
+                    'unique_listeners': tracks_result[0][1] if tracks_result else 0,
+                    'total_likes': tracks_result[0][2] if tracks_result else 0
+                },
+                'actions': {}
+            }
+            
+            for row in actions_result:
+                stats['actions'][row[0]] = row[1]
+            
+            return stats
+        except Exception as e:
+            print(f"Failed to get artist stats: {e}")
+            return {}
+    
+    async def insert_simple_listening_event(self, user_id: int, track_id: int, played_duration: int, device_type: str = "web", country: str = "Unknown"):
+        """Простая вставка события прослушивания для тестирования"""
+        if not self.client:
+            return False
+        
+        try:
+            # Используем метод log_track_action для вставки данных
+            await self.log_track_action(
+                track_id=track_id,
+                artist_id=1,  # Тестовый артист
+                action="play",
+                user_id=user_id,
+                duration_played_ms=played_duration * 1000,  # Конвертируем в миллисекунды
+                platform="web",
+                device_type=device_type,
+                location=country
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to insert listening event: {e}")
+            return False
     
     async def close(self):
         """Закрываем соединение с ClickHouse"""
@@ -70,513 +523,349 @@ class ClickHouseService:
         except Exception as e:
             raise Exception(f"Failed to execute query: {e}")
     
-    async def create_tables(self):
-        """Создание таблиц в ClickHouse для аналитики"""
+    # Методы для получения пользовательской аналитики
+    async def get_user_search_history(self, user_id: int, days: int = 30):
+        """Получаем историю поисков пользователя"""
         if not self.client:
-            print("ClickHouse client not available")
-            return False
-        
-        try:
-            # Таблица для событий прослушивания
-            listening_events_table = """
-            CREATE TABLE IF NOT EXISTS listening_events (
-                event_id String,
-                user_id UInt32,
-                track_id UInt32,
-                artist_id UInt32,
-                album_id UInt32,
-                genre_id UInt32,
-                played_at DateTime,
-                play_duration_ms UInt32,
-                completion_percentage Float32,
-                source String,
-                device_type String,
-                session_id String,
-                ip_address String,
-                user_agent String,
-                country String,
-                city String,
-                date Date MATERIALIZED toDate(played_at),
-                hour UInt8 MATERIALIZED toHour(played_at)
-            ) ENGINE = MergeTree()
-            ORDER BY (date, user_id, track_id, played_at)
-            PARTITION BY toYYYYMM(played_at)
-            """
-            
-            # Таблица для поисковых событий
-            search_events_table = """
-            CREATE TABLE IF NOT EXISTS search_events (
-                event_id String,
-                user_id UInt32,
-                query String,
-                results_count UInt32,
-                clicked_track_id UInt32,
-                search_timestamp DateTime,
-                session_id String,
-                ip_address String,
-                date Date MATERIALIZED toDate(search_timestamp)
-            ) ENGINE = MergeTree()
-            ORDER BY (date, user_id, search_timestamp)
-            PARTITION BY toYYYYMM(search_timestamp)
-            """
-            
-            # Таблица для событий плейлистов
-            playlist_events_table = """
-            CREATE TABLE IF NOT EXISTS playlist_events (
-                event_id String,
-                user_id UInt32,
-                playlist_id UInt32,
-                track_id UInt32,
-                action String,
-                timestamp DateTime,
-                session_id String,
-                date Date MATERIALIZED toDate(timestamp)
-            ) ENGINE = MergeTree()
-            ORDER BY (date, user_id, playlist_id, timestamp)
-            PARTITION BY toYYYYMM(timestamp)
-            """
-            
-            # Агрегированная таблица для статистики треков по дням
-            daily_track_stats_table = """
-            CREATE MATERIALIZED VIEW IF NOT EXISTS daily_track_stats
-            TO daily_track_stats_table
-            AS SELECT
-                track_id,
-                date,
-                count() as plays_count,
-                uniq(user_id) as unique_listeners,
-                avg(completion_percentage) as avg_completion,
-                sum(play_duration_ms) as total_listening_time
-            FROM listening_events
-            GROUP BY track_id, date
-            """
-            
-            # Таблица назначения для материализованного представления
-            daily_track_stats_table_target = """
-            CREATE TABLE IF NOT EXISTS daily_track_stats_table (
-                track_id UInt32,
-                date Date,
-                plays_count UInt32,
-                unique_listeners UInt32,
-                avg_completion Float32,
-                total_listening_time UInt64
-            ) ENGINE = SummingMergeTree()
-            ORDER BY (track_id, date)
-            """
-            
-            # Выполняем создание таблиц
-            await asyncio.to_thread(self.client.execute, listening_events_table)
-            await asyncio.to_thread(self.client.execute, search_events_table)
-            await asyncio.to_thread(self.client.execute, playlist_events_table)
-            await asyncio.to_thread(self.client.execute, daily_track_stats_table_target)
-            await asyncio.to_thread(self.client.execute, daily_track_stats_table)
-            
-            print("✅ ClickHouse tables created successfully")
-            return True
-            
-        except ClickHouseError as e:
-            print(f"❌ Error creating ClickHouse tables: {e}")
-            return False
-    
-    async def insert_listening_event(self, event_data: Dict[str, Any]) -> bool:
-        """Вставка события прослушивания в ClickHouse"""
-        if not self.client:
-            return False
+            return []
         
         try:
             query = """
-            INSERT INTO listening_events (
-                event_id, user_id, track_id, artist_id, album_id, genre_id,
-                played_at, play_duration_ms, completion_percentage,
-                source, device_type, session_id, ip_address, user_agent,
-                country, city
-            ) VALUES
+            SELECT 
+                search_query,
+                timestamp,
+                results_count,
+                clicked_result_id,
+                clicked_result_type
+            FROM search_analytics 
+            WHERE user_id = %(user_id)s 
+                AND timestamp >= subtractDays(now(), %(days)s)
+            ORDER BY timestamp DESC
+            LIMIT 50
             """
             
-            await asyncio.to_thread(
-                self.client.execute,
-                query,
-                [event_data]
-            )
-            return True
+            result = self.client.execute(query, {
+                'user_id': user_id,
+                'days': days
+            })
             
-        except ClickHouseError as e:
-            print(f"Error inserting listening event: {e}")
-            return False
+            return [
+                {
+                    'search_query': row[0],
+                    'timestamp': row[1].strftime('%Y-%m-%d %H:%M:%S'),
+                    'results_count': row[2],
+                    'clicked_result_id': row[3],
+                    'clicked_result_type': row[4]
+                }
+                for row in result
+            ]
+        except Exception as e:
+            print(f"Error getting user search history: {e}")
+            return []
     
-    async def insert_simple_listening_event(self, user_id: int, track_id: int, played_duration: int, 
-                                          device_type: str = 'web', country: str = 'Unknown', 
-                                          timestamp: datetime = None) -> bool:
-        """Простая вставка события прослушивания с минимальными параметрами"""
-        import uuid
-        from datetime import datetime
-        
-        if timestamp is None:
-            timestamp = datetime.now()
-        
-        event_data = {
-            'event_id': str(uuid.uuid4()),
-            'user_id': user_id,
-            'track_id': track_id,
-            'artist_id': 1,  # Default values
-            'album_id': 1,
-            'genre_id': 1,
-            'played_at': timestamp,
-            'play_duration_ms': played_duration * 1000,  # Convert to milliseconds
-            'completion_percentage': min(100.0, (played_duration / 180.0) * 100),  # Assume 3 min songs
-            'source': 'web',
-            'device_type': device_type,
-            'session_id': str(uuid.uuid4()),
-            'ip_address': '127.0.0.1',
-            'user_agent': 'Mozilla/5.0',
-            'country': country,
-            'city': 'Unknown'
-        }
-        
-        return await self.insert_listening_event(event_data)
+
     
-    async def insert_search_event(self, event_data: Dict[str, Any]) -> bool:
-        """Вставка поискового события в ClickHouse"""
-        if not self.client:
-            return False
-        
-        try:
-            query = """
-            INSERT INTO search_events (
-                event_id, user_id, query, results_count, clicked_track_id,
-                search_timestamp, session_id, ip_address
-            ) VALUES
-            """
-            
-            await asyncio.to_thread(
-                self.client.execute,
-                query,
-                [event_data]
-            )
-            return True
-            
-        except ClickHouseError as e:
-            print(f"Error inserting search event: {e}")
-            return False
-    
-    async def get_track_analytics(self, track_id: int, days: int = 30) -> Dict[str, Any]:
-        """Получение аналитики трека из ClickHouse"""
+    async def get_user_activity_stats(self, user_id: int, days: int = 30):
+        """Получаем общую статистику активности пользователя"""
         if not self.client:
             return {}
         
         try:
-            end_date = datetime.now().date()
-            start_date = end_date - timedelta(days=days)
-            
-            # Основная статистика
-            stats_query = """
-            SELECT
-                count() as total_plays,
-                uniq(user_id) as unique_listeners,
-                avg(completion_percentage) as avg_completion,
-                sum(play_duration_ms) as total_listening_time
-            FROM listening_events
-            WHERE track_id = %(track_id)s
-            AND date BETWEEN %(start_date)s AND %(end_date)s
+            # Статистика поиска
+            search_query = """
+            SELECT 
+                count() as total_searches,
+                uniq(search_query) as unique_queries,
+                countIf(clicked_result_id > 0) as searches_with_clicks
+            FROM search_analytics 
+            WHERE user_id = %(user_id)s 
+                AND timestamp >= subtractDays(now(), %(days)s)
             """
             
-            # Статистика по часам
-            hourly_query = """
-            SELECT
-                hour,
-                count() as plays
-            FROM listening_events
-            WHERE track_id = %(track_id)s
-            AND date BETWEEN %(start_date)s AND %(end_date)s
-            GROUP BY hour
-            ORDER BY hour
-            """
+            search_result = self.client.execute(search_query, {
+                'user_id': user_id,
+                'days': days
+            })
             
-            # Статистика по дням
-            daily_query = """
-            SELECT
-                date,
-                count() as plays,
-                uniq(user_id) as unique_listeners
-            FROM listening_events
-            WHERE track_id = %(track_id)s
-            AND date BETWEEN %(start_date)s AND %(end_date)s
-            GROUP BY date
-            ORDER BY date
-            """
-            
-            # Выполняем запросы
-            stats_result = await asyncio.to_thread(
-                self.client.execute,
-                stats_query,
-                {'track_id': track_id, 'start_date': start_date, 'end_date': end_date}
-            )
-            
-            hourly_result = await asyncio.to_thread(
-                self.client.execute,
-                hourly_query,
-                {'track_id': track_id, 'start_date': start_date, 'end_date': end_date}
-            )
-            
-            daily_result = await asyncio.to_thread(
-                self.client.execute,
-                daily_query,
-                {'track_id': track_id, 'start_date': start_date, 'end_date': end_date}
-            )
-            
-            # Формируем результат
-            stats = stats_result[0] if stats_result else (0, 0, 0.0, 0)
-            hourly_data = {hour: plays for hour, plays in hourly_result}
-            daily_data = {str(date): {'plays': plays, 'unique_listeners': listeners} 
-                         for date, plays, listeners in daily_result}
-            
-            return {
-                'total_plays': stats[0],
-                'unique_listeners': stats[1],
-                'avg_completion': float(stats[2]),
-                'total_listening_time': stats[3],
-                'plays_by_hour': hourly_data,
-                'plays_by_day': daily_data
-            }
-            
-        except ClickHouseError as e:
-            print(f"Error getting track analytics: {e}")
-            return {}
-    
-    async def get_user_analytics(self, user_id: int, days: int = 30) -> Dict[str, Any]:
-        """Получение аналитики пользователя из ClickHouse"""
-        if not self.client:
-            return {}
-        
-        try:
-            end_date = datetime.now().date()
-            start_date = end_date - timedelta(days=days)
-            
-            # Основная статистика пользователя
-            user_stats_query = """
-            SELECT
+            # Статистика прослушивания
+            track_query = """
+            SELECT 
                 count() as total_plays,
                 uniq(track_id) as unique_tracks,
-                sum(play_duration_ms) as total_listening_time,
-                avg(completion_percentage) as avg_completion
-            FROM listening_events
-            WHERE user_id = %(user_id)s
-            AND date BETWEEN %(start_date)s AND %(end_date)s
+                sum(play_duration_ms) as total_listening_time_ms,
+                avg(play_duration_ms) as avg_play_duration_ms
+            FROM track_analytics 
+            WHERE user_id = %(user_id)s 
+                AND timestamp >= subtractDays(now(), %(days)s)
             """
             
-            # Активность по часам
-            hourly_activity_query = """
-            SELECT
-                hour,
-                count() as plays
-            FROM listening_events
-            WHERE user_id = %(user_id)s
-            AND date BETWEEN %(start_date)s AND %(end_date)s
-            GROUP BY hour
-            ORDER BY hour
-            """
+            track_result = self.client.execute(track_query, {
+                'user_id': user_id,
+                'days': days
+            })
             
-            # Топ исполнители
-            top_artists_query = """
-            SELECT
-                artist_id,
-                count() as plays
-            FROM listening_events
-            WHERE user_id = %(user_id)s
-            AND date BETWEEN %(start_date)s AND %(end_date)s
-            GROUP BY artist_id
-            ORDER BY plays DESC
-            LIMIT 10
-            """
-            
-            # Выполняем запросы
-            stats_result = await asyncio.to_thread(
-                self.client.execute,
-                user_stats_query,
-                {'user_id': user_id, 'start_date': start_date, 'end_date': end_date}
-            )
-            
-            hourly_result = await asyncio.to_thread(
-                self.client.execute,
-                hourly_activity_query,
-                {'user_id': user_id, 'start_date': start_date, 'end_date': end_date}
-            )
-            
-            artists_result = await asyncio.to_thread(
-                self.client.execute,
-                top_artists_query,
-                {'user_id': user_id, 'start_date': start_date, 'end_date': end_date}
-            )
-            
-            # Формируем результат
-            stats = stats_result[0] if stats_result else (0, 0, 0, 0.0)
-            hourly_data = {hour: plays for hour, plays in hourly_result}
-            top_artists = [{'artist_id': artist_id, 'plays': plays} 
-                          for artist_id, plays in artists_result]
+            search_stats = search_result[0] if search_result else (0, 0, 0)
+            track_stats = track_result[0] if track_result else (0, 0, 0, 0)
             
             return {
-                'total_plays': stats[0],
-                'unique_tracks': stats[1],
-                'total_listening_time': stats[2],
-                'avg_completion': float(stats[3]),
-                'activity_by_hour': hourly_data,
-                'top_artists': top_artists
+                'search_stats': {
+                    'total_searches': search_stats[0],
+                    'unique_queries': search_stats[1],
+                    'searches_with_clicks': search_stats[2],
+                    'click_through_rate': search_stats[2] / max(search_stats[0], 1) * 100
+                },
+                'listening_stats': {
+                    'total_plays': track_stats[0],
+                    'unique_tracks': track_stats[1],
+                    'total_listening_time_ms': track_stats[2],
+                    'avg_play_duration_ms': track_stats[3],
+                    'total_listening_hours': track_stats[2] / (1000 * 60 * 60) if track_stats[2] else 0
+                }
             }
-            
-        except ClickHouseError as e:
-            print(f"Error getting user analytics: {e}")
+        except Exception as e:
+            print(f"Error getting user activity stats: {e}")
             return {}
     
-    async def get_top_tracks(self, limit: int = 50, days: int = 30) -> List[Dict[str, Any]]:
-        """Получение топ треков из ClickHouse"""
+    async def get_user_activity_timeline(self, user_id: int, days: int = 30):
+        """Получаем временную линию активности пользователя"""
         if not self.client:
             return []
         
         try:
-            end_date = datetime.now().date()
-            start_date = end_date - timedelta(days=days)
-            
             query = """
-            SELECT
-                track_id,
-                count() as total_plays,
-                uniq(user_id) as unique_listeners,
-                avg(completion_percentage) as avg_completion,
-                sum(play_duration_ms) as total_listening_time
-            FROM listening_events
-            WHERE date BETWEEN %(start_date)s AND %(end_date)s
-            GROUP BY track_id
-            ORDER BY total_plays DESC
-            LIMIT %(limit)s
+            WITH dates AS (
+                SELECT today() - number AS date
+                FROM numbers(%(days)s)
+            ),
+            search_activity AS (
+                SELECT 
+                    toDate(timestamp) as date,
+                    count() as search_count
+                FROM search_analytics 
+                WHERE user_id = %(user_id)s 
+                    AND timestamp >= subtractDays(now(), %(days)s)
+                GROUP BY toDate(timestamp)
+            ),
+            listening_activity AS (
+                SELECT 
+                    toDate(timestamp) as date,
+                    count() as listening_count
+                FROM track_analytics 
+                WHERE user_id = %(user_id)s 
+                    AND timestamp >= subtractDays(now(), %(days)s)
+                GROUP BY toDate(timestamp)
+            )
+            SELECT 
+                d.date,
+                coalesce(s.search_count, 0) as search_count,
+                coalesce(l.listening_count, 0) as listening_count,
+                1 as session_count
+            FROM dates d
+            LEFT JOIN search_activity s ON d.date = s.date
+            LEFT JOIN listening_activity l ON d.date = l.date
+            ORDER BY d.date ASC
             """
             
-            result = await asyncio.to_thread(
-                self.client.execute,
-                query,
-                {'start_date': start_date, 'end_date': end_date, 'limit': limit}
-            )
+            result = self.client.execute(query, {
+                'user_id': user_id,
+                'days': days
+            })
             
             return [
                 {
-                    'track_id': track_id,
-                    'total_plays': plays,
-                    'unique_listeners': listeners,
-                    'avg_completion': float(completion),
-                    'total_listening_time': listening_time
+                    'date': row[0].strftime('%Y-%m-%d'),
+                    'search_count': row[1],
+                    'listening_count': row[2],
+                    'session_count': row[3]
                 }
-                for track_id, plays, listeners, completion, listening_time in result
+                for row in result
             ]
-            
-        except ClickHouseError as e:
-            print(f"Error getting top tracks: {e}")
-            return []
-    
-    async def get_platform_analytics(self, days: int = 30) -> Dict[str, Any]:
-        """Получение общей аналитики платформы из ClickHouse"""
-        if not self.client:
-            return {}
-        
-        try:
-            end_date = datetime.now().date()
-            start_date = end_date - timedelta(days=days)
-            
-            # Общая статистика
-            platform_stats_query = """
-            SELECT
-                count() as total_plays,
-                uniq(user_id) as active_users,
-                uniq(track_id) as played_tracks,
-                sum(play_duration_ms) as total_listening_time
-            FROM listening_events
-            WHERE date BETWEEN %(start_date)s AND %(end_date)s
-            """
-            
-            # Активность по дням
-            daily_activity_query = """
-            SELECT
-                date,
-                count() as plays,
-                uniq(user_id) as active_users
-            FROM listening_events
-            WHERE date BETWEEN %(start_date)s AND %(end_date)s
-            GROUP BY date
-            ORDER BY date
-            """
-            
-            # Выполняем запросы
-            stats_result = await asyncio.to_thread(
-                self.client.execute,
-                platform_stats_query,
-                {'start_date': start_date, 'end_date': end_date}
-            )
-            
-            daily_result = await asyncio.to_thread(
-                self.client.execute,
-                daily_activity_query,
-                {'start_date': start_date, 'end_date': end_date}
-            )
-            
-            # Формируем результат
-            stats = stats_result[0] if stats_result else (0, 0, 0, 0)
-            daily_data = {str(date): {'plays': plays, 'active_users': users} 
-                         for date, plays, users in daily_result}
-            
-            return {
-                'total_plays': stats[0],
-                'active_users': stats[1],
-                'played_tracks': stats[2],
-                'total_listening_time': stats[3],
-                'daily_activity': daily_data
-            }
-            
-        except ClickHouseError as e:
-            print(f"Error getting platform analytics: {e}")
-            return {}
-    
-    async def get_trending_tracks(self, limit: int = 10, days: int = 7) -> List[Dict]:
-        """
-        Получить трендовые треки за указанный период
-        """
-        try:
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=days)
-            
-            query = """
-            SELECT
-                track_id,
-                count() as play_count,
-                uniq(user_id) as unique_listeners,
-                avg(play_duration_ms) as avg_duration
-            FROM listening_events
-            WHERE date BETWEEN %(start_date)s AND %(end_date)s
-            GROUP BY track_id
-            ORDER BY play_count DESC
-            LIMIT %(limit)s
-            """
-            
-            result = await asyncio.to_thread(
-                self.client.execute,
-                query,
-                {
-                    'start_date': start_date.date(),
-                    'end_date': end_date.date(),
-                    'limit': limit
-                }
-            )
-            
-            return [
-                {
-                    'track_id': track_id,
-                    'play_count': play_count,
-                    'unique_listeners': unique_listeners,
-                    'avg_duration': avg_duration
-                }
-                for track_id, play_count, unique_listeners, avg_duration in result
-            ]
-            
-        except ClickHouseError as e:
-            print(f"Error getting trending tracks: {e}")
+        except Exception as e:
+            print(f"Error getting user activity timeline: {e}")
             return []
 
-# Создаем глобальный экземпляр сервиса
+    async def get_user_search_stats(self, user_id: int, period: str = "week") -> Dict[str, Any]:
+        """Получить статистику поиска пользователя"""
+        if not self.client:
+            return {"total_searches": 0, "unique_queries": 0, "avg_results": 0}
+        
+        try:
+            days = self._get_days_for_period(period)
+            
+            query = """
+            SELECT 
+                count() as total_searches,
+                uniq(query) as unique_queries,
+                avg(result_count) as avg_results,
+                sum(clicked_result) as clicked_results
+            FROM search_analytics 
+            WHERE user_id = %(user_id)s 
+                AND timestamp >= subtractDays(now(), %(days)s)
+            """
+            
+            result = self.client.execute(query, {
+                'user_id': user_id,
+                'days': days
+            })
+            
+            if result:
+                row = result[0]
+                return {
+                    "total_searches": row[0],
+                    "unique_queries": row[1],
+                    "avg_results": round(row[2] or 0, 1),
+                    "clicked_results": row[3] or 0
+                }
+            
+            return {"total_searches": 0, "unique_queries": 0, "avg_results": 0, "clicked_results": 0}
+        except Exception as e:
+            print(f"Error getting user search stats: {e}")
+            return {"total_searches": 0, "unique_queries": 0, "avg_results": 0, "clicked_results": 0}
+
+    async def get_user_listening_stats(self, user_id: int, period: str = "week") -> Dict[str, Any]:
+        """Получить статистику прослушивания пользователя"""
+        if not self.client:
+            return {"total_plays": 0, "unique_tracks": 0, "total_duration": 0}
+        
+        try:
+            days = self._get_days_for_period(period)
+            
+            query = """
+            SELECT 
+                count() as total_plays,
+                uniq(track_id) as unique_tracks,
+                sum(duration_played_ms) as total_duration_ms,
+                uniq(artist_id) as unique_artists
+            FROM track_analytics 
+            WHERE user_id = %(user_id)s 
+                AND timestamp >= subtractDays(now(), %(days)s)
+                AND action = 'play'
+            """
+            
+            result = self.client.execute(query, {
+                'user_id': user_id,
+                'days': days
+            })
+            
+            if result:
+                row = result[0]
+                total_duration_ms = row[2] or 0
+                total_hours = round(total_duration_ms / (1000 * 60 * 60), 1)
+                
+                return {
+                    "total_plays": row[0],
+                    "unique_tracks": row[1],
+                    "unique_artists": row[3],
+                    "total_duration_hours": total_hours,
+                    "total_duration_ms": total_duration_ms
+                }
+            
+            return {"total_plays": 0, "unique_tracks": 0, "unique_artists": 0, "total_duration_hours": 0, "total_duration_ms": 0}
+        except Exception as e:
+            print(f"Error getting user listening stats: {e}")
+            return {"total_plays": 0, "unique_tracks": 0, "unique_artists": 0, "total_duration_hours": 0, "total_duration_ms": 0}
+
+    def _get_days_for_period(self, period: str) -> int:
+        """Конвертирует период в количество дней"""
+        period_map = {
+            "7d": 7,
+            "30d": 30, 
+            "90d": 90,
+            "day": 1,
+            "week": 7,
+            "month": 30,
+            "year": 365
+        }
+        return period_map.get(period, 30)
+
+    async def get_user_top_tracks(self, user_id: int, period: str = "week", limit: int = 10) -> List[Dict[str, Any]]:
+        """Получить топ треков пользователя"""
+        if not self.client:
+            return []
+        
+        try:
+            days = self._get_days_for_period(period)
+            
+            query = """
+            SELECT 
+                track_id,
+                artist_id,
+                count() as play_count,
+                sum(duration_played_ms) as total_duration_ms,
+                avg(duration_played_ms) as avg_duration_ms
+            FROM track_analytics 
+            WHERE user_id = %(user_id)s 
+                AND timestamp >= subtractDays(now(), %(days)s)
+                AND action = 'play'
+            GROUP BY track_id, artist_id
+            ORDER BY play_count DESC, total_duration_ms DESC
+            LIMIT %(limit)s
+            """
+            
+            result = self.client.execute(query, {
+                'user_id': user_id,
+                'days': days,
+                'limit': limit
+            })
+            
+            top_tracks = []
+            for row in result:
+                track = {
+                    "track_id": row[0],
+                    "artist_id": row[1],
+                    "title": f"Track {row[0]}",  # Placeholder, will be replaced with actual data
+                    "artist_name": f"Artist {row[1]}",  # Placeholder, will be replaced with actual data
+                    "play_count": row[2],
+                    "total_duration_ms": row[3],
+                    "avg_duration_ms": round(row[4], 0) if row[4] else 0,
+                    "total_hours": round((row[3] or 0) / (1000 * 60 * 60), 1)
+                }
+                top_tracks.append(track)
+            
+            return top_tracks
+        except Exception as e:
+            print(f"Error getting user top tracks: {e}")
+            return []
+
+    async def get_user_recent_searches(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+        """Получить недавние поиски пользователя"""
+        if not self.client:
+            return []
+        
+        try:
+            query = """
+            SELECT 
+                query,
+                timestamp,
+                result_count,
+                clicked_result,
+                search_type
+            FROM search_analytics 
+            WHERE user_id = %(user_id)s 
+            ORDER BY timestamp DESC
+            LIMIT %(limit)s
+            """
+            
+            result = self.client.execute(query, {
+                'user_id': user_id,
+                'limit': limit
+            })
+            
+            recent_searches = []
+            for row in result:
+                search = {
+                    "query": row[0],
+                    "timestamp": row[1].isoformat(),
+                    "result_count": row[2],
+                    "clicked_result": bool(row[3]),
+                    "search_type": row[4]
+                }
+                recent_searches.append(search)
+            
+            return recent_searches
+        except Exception as e:
+            print(f"Error getting user recent searches: {e}")
+            return []
+
+
 clickhouse_service = ClickHouseService()

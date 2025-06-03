@@ -1,10 +1,12 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from elasticsearch import AsyncElasticsearch
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_
 
 from app.db.models import Track, Artist, Album, Genre
 from app.schemas.track import TrackWithDetails, TrackSearchQuery, TrackSearchResponse
+from app.schemas.artist import Artist as ArtistSchema
+from app.schemas.album import Album as AlbumSchema
 from app.core.config import settings
 
 
@@ -15,7 +17,7 @@ class SearchService:
         self.db = db
         # Настройка подключения к Elasticsearch
         es_config = {
-            'hosts': [f"{settings.ELASTICSEARCH_HOST}:{settings.ELASTICSEARCH_PORT}"]
+            'hosts': [f"http://{settings.ELASTICSEARCH_HOST}:{settings.ELASTICSEARCH_PORT}"]
         }
         
         if settings.ELASTICSEARCH_USERNAME and settings.ELASTICSEARCH_PASSWORD:
@@ -26,7 +28,8 @@ class SearchService:
         
         # self.es = AsyncElasticsearch(**es_config)
         # Пока используем заглушку, потом подключим Elasticsearch
-        self.es = None
+        self.es = AsyncElasticsearch(**es_config) # Активируем Elasticsearch
+        # self.es = None # Закомментируем заглушку
     
     async def index_track(self, track: Track, artist_name: str = None, album_title: str = None, genre_name: str = None):
         """Индексация трека в Elasticsearch"""
@@ -60,6 +63,362 @@ class SearchService:
             )
         except Exception as e:
             print(f"Error indexing track {track.id}: {e}")
+    
+    async def index_artist(self, artist: Artist):
+        """Индексация артиста в Elasticsearch"""
+        if not self.es:
+            return  # Заглушка
+
+        doc = {
+            "id": artist.id,
+            "name": artist.name,
+            "bio": artist.bio,
+            "country": artist.country,
+            "image_url": artist.image_url,
+            "created_at": artist.created_at.isoformat() if artist.created_at else None,
+        }
+
+        try:
+            await self.es.index(
+                index="artists",
+                id=artist.id,
+                document=doc
+            )
+        except Exception as e:
+            print(f"Error indexing artist {artist.id}: {e}")
+
+    async def index_album(self, album: Album, artist_name: str = None):
+        """Индексация альбома в Elasticsearch"""
+        if not self.es:
+            return  # Заглушка
+
+        doc = {
+            "id": album.id,
+            "title": album.title,
+            "artist_id": album.artist_id,
+            "artist_name": artist_name or "",
+            "release_date": album.release_date.isoformat() if album.release_date else None,
+            "cover_image_url": album.cover_image_url,
+            "created_at": album.created_at.isoformat() if album.created_at else None,
+        }
+
+        try:
+            await self.es.index(
+                index="albums",
+                id=album.id,
+                document=doc
+            )
+        except Exception as e:
+            print(f"Error indexing album {album.id}: {e}")
+
+    async def delete_entity(self, index: str, entity_id: int):
+        """Удаление сущности из Elasticsearch по ID и индексу"""
+        if not self.es:
+            return  # Заглушка
+
+        try:
+            await self.es.delete(
+                index=index,
+                id=entity_id,
+                ignore=404 # Игнорируем ошибку, если документ не найден (уже удален)
+            )
+            print(f"Successfully deleted entity {entity_id} from index {index}.")
+        except Exception as e:
+            print(f"Error deleting entity {entity_id} from index {index}: {e}")
+
+    async def multi_entity_search(self, query: str, limit: int = 10) -> Dict[str, List[Union[TrackWithDetails, ArtistSchema, AlbumSchema]]]:
+        """Универсальный поиск по трекам, артистам и альбомам"""
+        if not self.es:
+            # Fallback к поиску через PostgreSQL (если нужно)
+            # Для простоты, здесь пока не делаем сложный fallback, т.к. цель - Elasticsearch
+            return {"tracks": [], "artists": [], "albums": []}
+
+        # Запросы для разных типов сущностей
+        search_requests = []
+
+        # Поиск треков
+        track_query = {
+            "query": {
+                "multi_match": {
+                    "query": query,
+                    "fields": ["title^3", "artist_name^2", "album_title", "genre_name"],
+                    "fuzziness": "AUTO"
+                }
+            },
+            "size": limit
+        }
+        search_requests.append({"index": "tracks"}) # Заголовок для треков
+        search_requests.append(track_query)
+
+        # Поиск артистов
+        artist_query = {
+            "query": {
+                "multi_match": {
+                    "query": query,
+                    "fields": ["name^3", "bio"],
+                    "fuzziness": "AUTO"
+                }
+            },
+            "size": limit
+        }
+        search_requests.append({"index": "artists"}) # Заголовок для артистов
+        search_requests.append(artist_query)
+
+        # Поиск альбомов
+        album_query = {
+            "query": {
+                "multi_match": {
+                    "query": query,
+                    "fields": ["title^3", "artist_name^2"],
+                    "fuzziness": "AUTO"
+                }
+            },
+            "size": limit
+        }
+        search_requests.append({"index": "albums"}) # Заголовок для альбомов
+        search_requests.append(album_query)
+
+        try:
+            responses = await self.es.msearch(body=search_requests)
+            print(f"Elasticsearch msearch raw response: {responses}") # Временный лог
+            
+            tracks_data = []
+            artists_data = []
+            albums_data = []
+
+            if responses and responses.get("responses"):
+                # Обработка результатов треков
+                track_hits = responses["responses"][0]["hits"]["hits"]
+                print(f"Track hits from Elasticsearch: {track_hits}") # Временный лог
+                track_ids = [hit["_source"]["id"] for hit in track_hits]
+                print(f"Extracted track IDs: {track_ids}") # Временный лог
+                tracks_data = await self._get_tracks_with_details(track_ids)
+
+                # Обработка результатов артистов
+                artist_hits = responses["responses"][1]["hits"]["hits"]
+                print(f"Artist hits from Elasticsearch: {artist_hits}") # Временный лог
+                artist_ids = [hit["_source"]["id"] for hit in artist_hits]
+                print(f"Extracted artist IDs: {artist_ids}") # Временный лог
+                artists_data = await self._get_artists_by_ids(artist_ids)
+
+                # Обработка результатов альбомов
+                album_hits = responses["responses"][2]["hits"]["hits"]
+                print(f"Album hits from Elasticsearch: {album_hits}") # Временный лог
+                album_ids = [hit["_source"]["id"] for hit in album_hits]
+                print(f"Extracted album IDs: {album_ids}") # Временный лог
+                albums_data = await self._get_albums_by_ids(album_ids)
+
+            return {
+                "tracks": tracks_data,
+                "artists": artists_data,
+                "albums": albums_data
+            }
+
+        except Exception as e:
+            print(f"Elasticsearch multi-entity search error: {e}")
+            return {"tracks": [], "artists": [], "albums": []}
+
+    async def _get_artists_by_ids(self, artist_ids: List[int]) -> List[ArtistSchema]:
+        """Получение артистов по списку ID"""
+        if not artist_ids:
+            return []
+        
+        query = select(Artist).where(Artist.id.in_(artist_ids))
+        result = await self.db.execute(query)
+        artists_db = result.scalars().all()
+        
+        # Сохраняем порядок
+        artist_dict = {artist.id: ArtistSchema.model_validate(artist) for artist in artists_db}
+        return [artist_dict[artist_id] for artist_id in artist_ids if artist_id in artist_dict]
+
+    async def _get_albums_by_ids(self, album_ids: List[int]) -> List[AlbumSchema]:
+        """Получение альбомов по списку ID"""
+        if not album_ids:
+            return []
+        
+        # Для альбомов также может понадобиться имя артиста
+        query = (
+            select(Album, Artist.name.label("artist_name"))
+            .outerjoin(Artist, Album.artist_id == Artist.id)
+            .where(Album.id.in_(album_ids))
+        )
+        result = await self.db.execute(query)
+        rows = result.all()
+        
+        album_dict = {}
+        for row in rows:
+            album, artist_name = row
+            album_with_details = AlbumSchema(
+                **album.__dict__,
+                artist_name=artist_name # Добавляем имя артиста, если нужно в схеме Album
+            )
+            album_dict[album.id] = album_with_details
+
+        return [album_dict[album_id] for album_id in album_ids if album_id in album_dict]
+
+    async def create_elasticsearch_mapping(self):
+        """Создание маппинга для Elasticsearch"""
+        if not self.es:
+            return
+        
+        # Маппинг для треков (уже есть, но можно обновить или убедиться)
+        track_mapping = {
+            "properties": {
+                "id": {"type": "integer"},
+                "title": {
+                    "type": "text",
+                    "analyzer": "standard",
+                    "fields": {
+                        "keyword": {"type": "keyword"},
+                        "suggest": {
+                            "type": "completion",
+                            "analyzer": "simple"
+                        }
+                    }
+                },
+                "artist_id": {"type": "integer"},
+                "artist_name": {
+                    "type": "text",
+                    "analyzer": "standard",
+                    "fields": {
+                        "keyword": {"type": "keyword"},
+                        "suggest": {
+                            "type": "completion",
+                            "analyzer": "simple"
+                        }
+                    }
+                },
+                "album_id": {"type": "integer"},
+                "album_title": {
+                    "type": "text",
+                    "analyzer": "standard",
+                    "fields": {"keyword": {"type": "keyword"}}
+                },
+                "genre_id": {"type": "integer"},
+                "genre_name": {
+                    "type": "text",
+                    "analyzer": "standard",
+                    "fields": {"keyword": {"type": "keyword"}}
+                },
+                "duration_ms": {"type": "integer"},
+                "popularity": {"type": "integer"},
+                "explicit": {"type": "boolean"},
+                "tempo": {"type": "float"},
+                "energy": {"type": "float"},
+                "valence": {"type": "float"},
+                "danceability": {"type": "float"},
+                "created_at": {"type": "date"}
+            }
+        }
+
+        # Маппинг для артистов
+        artist_mapping = {
+            "properties": {
+                "id": {"type": "integer"},
+                "name": {
+                    "type": "text",
+                    "analyzer": "standard",
+                    "fields": {
+                        "keyword": {"type": "keyword"},
+                        "suggest": {
+                            "type": "completion",
+                            "analyzer": "simple"
+                        }
+                    }
+                },
+                "bio": {"type": "text"},
+                "country": {"type": "keyword"},
+                "image_url": {"type": "keyword"},
+                "created_at": {"type": "date"}
+            }
+        }
+
+        # Маппинг для альбомов
+        album_mapping = {
+            "properties": {
+                "id": {"type": "integer"},
+                "title": {
+                    "type": "text",
+                    "analyzer": "standard",
+                    "fields": {
+                        "keyword": {"type": "keyword"},
+                        "suggest": {
+                            "type": "completion",
+                            "analyzer": "simple"
+                        }
+                    }
+                },
+                "artist_id": {"type": "integer"},
+                "artist_name": {
+                    "type": "text",
+                    "analyzer": "standard",
+                    "fields": {"keyword": {"type": "keyword"}}
+                },
+                "release_date": {"type": "date"},
+                "cover_image_url": {"type": "keyword"},
+                "created_at": {"type": "date"}
+            }
+        }
+        
+        try:
+            await self.es.indices.create(index="tracks", mappings=track_mapping, ignore=400)
+            await self.es.indices.create(index="artists", mappings=artist_mapping, ignore=400)
+            await self.es.indices.create(index="albums", mappings=album_mapping, ignore=400)
+            print("Elasticsearch mappings created successfully or already exist.")
+        except Exception as e:
+            print(f"Error creating Elasticsearch mappings: {e}")
+
+    async def reindex_all_entities(self):
+        """Переиндексация всех сущностей (треков, артистов, альбомов)"""
+        if not self.es:
+            print("Elasticsearch client not available for reindexing.")
+            return
+
+        print("Starting full reindex of all tracks, artists, and albums to Elasticsearch...")
+
+        # Reindex Tracks
+        query_tracks = (
+            select(
+                Track,
+                Artist.name.label("artist_name"),
+                Album.title.label("album_title"),
+                Genre.name.label("genre_name")
+            )
+            .outerjoin(Artist, Track.artist_id == Artist.id)
+            .outerjoin(Album, Track.album_id == Album.id)
+            .outerjoin(Genre, Track.genre_id == Genre.id)
+        )
+        result_tracks = await self.db.execute(query_tracks)
+        rows_tracks = result_tracks.all()
+        for row in rows_tracks:
+            track = row[0]
+            await self.index_track(
+                track,
+                artist_name=row.artist_name,
+                album_title=row.album_title,
+                genre_name=row.genre_name
+            )
+        print(f"Indexed {len(rows_tracks)} tracks.")
+
+        # Reindex Artists
+        query_artists = select(Artist)
+        result_artists = await self.db.execute(query_artists)
+        artists_db = result_artists.scalars().all()
+        for artist in artists_db:
+            await self.index_artist(artist)
+        print(f"Indexed {len(artists_db)} artists.")
+
+        # Reindex Albums
+        query_albums = select(Album, Artist.name.label("artist_name")).outerjoin(Artist, Album.artist_id == Artist.id)
+        result_albums = await self.db.execute(query_albums)
+        rows_albums = result_albums.all()
+        for row in rows_albums:
+            album = row[0]
+            artist_name = row.artist_name
+            await self.index_album(album, artist_name)
+        print(f"Indexed {len(rows_albums)} albums.")
+
+        print("Full reindex complete.")
     
     async def search_tracks_elasticsearch(self, search_query: TrackSearchQuery) -> TrackSearchResponse:
         """Поиск треков через Elasticsearch"""
@@ -335,98 +694,8 @@ class SearchService:
         
         return [f"{row.title} - {row.artist_name}" for row in rows]
     
-    async def create_elasticsearch_mapping(self):
-        """Создание маппинга для Elasticsearch"""
-        if not self.es:
-            return
-        
-        mapping = {
-            "properties": {
-                "id": {"type": "integer"},
-                "title": {
-                    "type": "text",
-                    "analyzer": "standard",
-                    "fields": {
-                        "keyword": {"type": "keyword"},
-                        "suggest": {
-                            "type": "completion",
-                            "analyzer": "simple"
-                        }
-                    }
-                },
-                "artist_name": {
-                    "type": "text",
-                    "analyzer": "standard",
-                    "fields": {
-                        "keyword": {"type": "keyword"},
-                        "suggest": {
-                            "type": "completion",
-                            "analyzer": "simple"
-                        }
-                    }
-                },
-                "album_title": {
-                    "type": "text",
-                    "analyzer": "standard",
-                    "fields": {"keyword": {"type": "keyword"}}
-                },
-                "genre_name": {
-                    "type": "text",
-                    "analyzer": "standard",
-                    "fields": {"keyword": {"type": "keyword"}}
-                },
-                "duration_ms": {"type": "integer"},
-                "popularity": {"type": "integer"},
-                "explicit": {"type": "boolean"},
-                "tempo": {"type": "float"},
-                "energy": {"type": "float"},
-                "valence": {"type": "float"},
-                "danceability": {"type": "float"},
-                "created_at": {"type": "date"}
-            }
-        }
-        
-        try:
-            await self.es.indices.create(
-                index="tracks",
-                mappings=mapping,
-                ignore=400  # Игнорируем ошибку если индекс уже существует
-            )
-        except Exception as e:
-            print(f"Error creating Elasticsearch mapping: {e}")
-    
-    async def reindex_all_tracks(self):
-        """Переиндексация всех треков"""
-        if not self.es:
-            return
-        
-        # Получаем все треки с деталями
-        query = (
-            select(
-                Track,
-                Artist.name.label("artist_name"),
-                Album.title.label("album_title"),
-                Genre.name.label("genre_name")
-            )
-            .outerjoin(Artist, Track.artist_id == Artist.id)
-            .outerjoin(Album, Track.album_id == Album.id)
-            .outerjoin(Genre, Track.genre_id == Genre.id)
-        )
-        
-        result = await self.db.execute(query)
-        rows = result.all()
-        
-        for row in rows:
-            track = row[0]
-            await self.index_track(
-                track,
-                artist_name=row.artist_name,
-                album_title=row.album_title,
-                genre_name=row.genre_name
-            )
-    
     async def search_tracks(self, query: str, genre: str = None, year: int = None, 
-                           artist: str = None, album: str = None, limit: int = 10) -> List[TrackWithDetails]:
+                           artist: str = None, album: str = None, limit: int = 10, offset: int = 0) -> TrackSearchResponse:
         """Поиск треков с простыми параметрами (для совместимости с API endpoint)"""
         from app.schemas.track import TrackSearchQuery
         
@@ -437,7 +706,7 @@ class SearchService:
             artist=artist,
             album=album,
             limit=limit,
-            offset=0
+            offset=offset # Теперь offset передается
         )
         
         # Используем основной метод поиска
@@ -446,4 +715,4 @@ class SearchService:
         else:
             result = await self.search_tracks_fallback(search_query)
         
-        return result.tracks
+        return result # Возвращаем полный TrackSearchResponse
