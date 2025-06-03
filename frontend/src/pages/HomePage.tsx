@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import SearchOverlay from '../components/SearchOverlay';
 import '../App.css';
 import logo from '../image.png';
 
@@ -10,13 +11,10 @@ interface User {
   full_name: string;
 }
 
-interface HomePageProps {
-  setShowSearchOverlay: (show: boolean) => void;
-}
-
-const HomePage: React.FC<HomePageProps> = ({ setShowSearchOverlay }) => {
+const HomePage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,56 +27,30 @@ const HomePage: React.FC<HomePageProps> = ({ setShowSearchOverlay }) => {
       setIsLoading(false);
       return;
     }
-
     try {
       const response = await fetch('/api/v1/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
-        localStorage.setItem('user_role', userData.role); // Сохраняем роль
-        localStorage.setItem('user_name', userData.full_name || userData.username); // Сохраняем имя
-        
-        // Если пользователь - артист, пытаемся получить ID его профиля
-        if (userData.role === 'artist') {
-          // Предполагаем, что эндпоинт /api/v1/artists/me существует или будет создан
-          // или что информация о artist_id приходит в /auth/me
-          // В текущей схеме User есть artist_profile_id
-          if (userData.artist_profile_id) { 
-            localStorage.setItem('artist_id', userData.artist_profile_id.toString());
-          } else {
-            // Можно добавить логику получения artist_id, если его нет в userData
-            // Например, отдельным запросом к /api/v1/artists/by-user/{user_id}
-            console.warn('Artist ID not found directly in /auth/me response for artist role.');
-          }
+        localStorage.setItem('user_role', userData.role);
+        localStorage.setItem('user_name', userData.full_name || userData.username);
+        if (userData.role === 'artist' && userData.artist_profile_id) {
+          localStorage.setItem('artist_id', userData.artist_profile_id.toString());
         }
-
       } else {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('user_name');
-        localStorage.removeItem('artist_id');
+        localStorage.clear();
       }
-    } catch (error) {
-      console.error('Ошибка проверки авторизации:', error);
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user_name');
-      localStorage.removeItem('artist_id');
+    } catch {
+      localStorage.clear();
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_name');
-    localStorage.removeItem('artist_id');
+    localStorage.clear();
     setUser(null);
     navigate('/');
   };
@@ -90,6 +62,7 @@ const HomePage: React.FC<HomePageProps> = ({ setShowSearchOverlay }) => {
       </div>
     );
   }
+
   return (
     <div className="app-container">
       {/* Боковая панель */}
@@ -112,23 +85,30 @@ const HomePage: React.FC<HomePageProps> = ({ setShowSearchOverlay }) => {
       <div className="main-content">
         {/* Верхняя панель */}
         <div className="top-bar">
-          <div>
-            <button onClick={() => setShowSearchOverlay(true)} className="search-button">
-              <i className="fas fa-search"></i> Поиск
-            </button>
+          {/* Поиск по центру */}
+          <div className="search-container">
+            <input
+              className="search-input"
+              placeholder="Поиск треков, артистов, альбомов..."
+              onFocus={() => setShowSearchOverlay(true)}
+              readOnly
+            />
           </div>
-          {user ? (
-            <div className="user-info auth-buttons-group">
-              <span>Привет, {user.full_name || user.username}!</span>
-              <Link to="/profile" className="auth-button profile">Профиль</Link>
-              <button onClick={handleLogout} className="auth-button logout">Выйти</button>
-            </div>
-          ) : (
-            <div className="auth-buttons-group">
-              <Link to="/login" className="auth-button">Войти</Link>
-              <Link to="/register" className="auth-button auth-button-secondary">Зарегистрироваться</Link>
-            </div>
-          )}
+          {/* Кнопки справа */}
+          <div className="auth-buttons-group">
+            {user ? (
+              <>
+                <span className="user-greeting">Привет, {user.full_name || user.username}!</span>
+                <Link to="/profile" className="auth-button profile">Профиль</Link>
+                <button onClick={handleLogout} className="auth-button logout">Выйти</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="auth-button">Войти</Link>
+                <Link to="/register" className="auth-button auth-button-secondary">Зарегистрироваться</Link>
+              </>
+            )}
+          </div>
         </div>
         <h1>Новинки</h1>
         {/* Раздел с новыми плейлистами/альбомами */}
@@ -151,11 +131,11 @@ const HomePage: React.FC<HomePageProps> = ({ setShowSearchOverlay }) => {
         </div>
       </div>
 
-      {/* Нижний баннер */}
-      {/* <div className="bottom-banner">
-        <p>Получите более 100 миллионов песен бесплатно на 1 месяц.</p>
-        <button>Попробовать бесплатно</button>
-      </div> */}
+      {/* Search Overlay */}
+      <SearchOverlay 
+        isVisible={showSearchOverlay} 
+        onClose={() => setShowSearchOverlay(false)} 
+      />
     </div>
   );
 };

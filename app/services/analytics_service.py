@@ -177,9 +177,19 @@ class AnalyticsService:
             print(f"Error getting track analytics: {e}")
             return None
     
-    async def get_user_analytics(self, user_id: int, days: int = 30) -> Optional[UserAnalytics]:
+    async def get_user_analytics(self, user_id: int, period: str = "week") -> Optional[UserAnalytics]:
         """Получение аналитики по пользователю из ClickHouse"""
         try:
+            # Преобразуем период в количество дней
+            days_map = {
+                "day": 1,
+                "week": 7,
+                "month": 30,
+                "year": 365,
+                "all": 365 * 10 # Или другое большое число для "все время"
+            }
+            days = days_map.get(period, 7)
+
             # Получаем аналитику из ClickHouse
             analytics_data = await self.clickhouse.get_user_analytics(user_id, days)
             
@@ -297,7 +307,7 @@ class AnalyticsService:
         }
         
         days = days_map.get(period, 7)
-        user_analytics = await self.get_user_analytics(user_id, days)
+        user_analytics = await self.get_user_analytics(user_id, period)
         
         if user_analytics:
             return {

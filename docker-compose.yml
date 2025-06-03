@@ -1,18 +1,47 @@
-version: '3.8'
-
 services:
   elasticsearch:
-    image: elasticsearch:8.11.0 # Используем версию 8.11.0, совместимую с вашим проектом
+    image: elasticsearch:8.11.0
     container_name: elasticsearch
     ports:
       - "9200:9200"
       - "9300:9300"
     environment:
-      - discovery.type=single-node # Для разработки, запускаем как одиночный узел
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m # Ограничиваем использование памяти
-      - xpack.security.enabled=false # Отключаем безопасность для простоты (для разработки)
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
     volumes:
-      - esdata:/usr/share/elasticsearch/data # Сохраняем данные Elasticsearch
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - jonquils-network
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: clickhouse
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+    environment:
+      - CLICKHOUSE_DB=jonquils_analytics
+      - CLICKHOUSE_USER=admin
+      - CLICKHOUSE_PASSWORD=admin123
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/config.xml:/etc/clickhouse-server/config.xml
+      - ./clickhouse/users.xml:/etc/clickhouse-server/users.xml
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - jonquils-network
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  jonquils-network:
+    driver: bridge
 
 volumes:
-  esdata: # Определение тома для данных Elasticsearch 
+  esdata:
+  clickhouse_data: 

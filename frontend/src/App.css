@@ -105,13 +105,13 @@ code {
 }
 
 .main-content .top-bar {
-    height: 50px; /* Примерная высота верхней панели */
+    height: 60px; /* Примерная высота верхней панели */
     display: flex;
-    justify-content: space-between; /* Изменяем на space-between для выравнивания по краям */
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 20px; /* Отступ после верхней панели */
     padding: 0 40px;
-    /* gap: 15px; /* Убираем, так как space-between сам управляет основным отступом */
+    gap: 20px;
 }
 
 .main-content h1 {
@@ -267,33 +267,54 @@ code {
 }
 
 .auth-button {
-  background-color: var(--accent-color); /* Красный акцентный цвет */
-  color: var(--text-color-primary); /* Белый текст */
+  background-color: var(--accent-color);
+  color: var(--text-color-primary);
   border: none;
-  padding: 10px 20px;
-  border-radius: 25px; /* Скругленные углы */
-  cursor: pointer;
+  padding: 10px 22px;
+  border-radius: 25px;
   font-size: 1em;
-  font-weight: bold;
-  text-decoration: none; /* Убираем подчеркивание */
-  transition: background-color 0.2s ease-in-out;
-  white-space: nowrap; /* Предотвращаем перенос текста */
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(252, 56, 93, 0.15);
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-button:hover, .auth-button:focus {
+  background-color: #e6335a;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(252, 56, 93, 0.3);
 }
 
 .auth-button.profile {
   background-color: var(--accent-color);
-  color: var(--text-color-primary);
+  color: #fff;
+}
+
+.auth-button.profile:hover {
+  background-color: #e6335a;
+  color: #fff;
+  text-decoration: none;
 }
 
 .auth-button.logout {
   background-color: transparent;
-  border: 1px solid var(--accent-color);
+  border: 2px solid var(--accent-color);
   color: var(--accent-color);
+  padding: 10px 22px;
 }
 
 .auth-button.logout:hover {
   background-color: var(--accent-color);
-  color: var(--text-color-primary);
+  color: #fff;
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(252, 56, 93, 0.3);
 }
 
 .auth-button-secondary {
@@ -304,380 +325,1114 @@ code {
 
 .auth-button-secondary:hover {
   background-color: var(--accent-color);
-  color: var(--text-color-primary);
+  color: #fff;
 }
 
-.error-message {
-  color: var(--accent-color); /* Используем акцентный цвет для ошибок */
-  margin-bottom: 15px;
-  text-align: center;
+.auth-button, .auth-button.profile, .auth-button.logout, .auth-button-secondary {
+  text-decoration: none !important;
 }
 
-.success-message {
-  color: #4CAF50; /* Зеленый цвет для успеха */
-  margin-bottom: 15px;
-  text-align: center;
-}
-
-.auth-container p {
-  margin-top: 20px;
-  color: var(--text-color-secondary); /* Используем переменную */
-}
-
-.auth-container p a {
-  color: var(--accent-color); /* Используем переменную */
-  text-decoration: none;
-}
-
-.auth-container p a:hover {
-  text-decoration: underline;
-}
-
-/* Стили для верхней панели с авторизацией */
-.top-bar {
-  height: 50px;
-  display: flex;
-  justify-content: space-between; /* Кнопка поиска слева, остальные элементы справа */
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 0 40px;
-  width: 100%; /* Убедимся, что верхняя панель занимает всю ширину */
-  box-sizing: border-box; /* Учитываем padding в ширине */
-  gap: 15px; /* Общий отступ между основными группами элементов в top-bar (не влияет на space-between) */
-}
-
-.search-button {
-  background-color: var(--tertiary-bg-color); /* Фон кнопки */
-  color: var(--text-color-secondary); /* Цвет текста/иконки */
-  border: 1px solid var(--text-color-secondary); /* Добавляем тонкую рамку */
-  padding: 8px 16px; /* Единый padding */
-  height: 36px; /* Фиксированная высота */
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* Центрируем текст по горизонтали и вертикали */
-  gap: 8px;
-  flex-shrink: 0; /* Предотвращаем сжатие */
-}
-
-.search-button:hover {
-  background-color: var(--hover-color);
-  color: var(--text-color-primary);
-  border-color: var(--text-color-primary);
-}
-
-.search-button i {
-  font-size: 16px;
-  vertical-align: middle; /* Выравниваем иконку по центру */
-}
-
-.auth-buttons {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.auth-buttons .auth-button {
-  background-color: transparent;
-  color: var(--accent-color);
-  border: 1px solid var(--accent-color);
-  padding: 8px 16px; /* Единый padding */
-  height: 36px; /* Фиксированная высота */
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background-color 0.3s ease;
-  margin: 0;
-  width: auto;
-  display: flex; /* Для центрирования текста */
-  align-items: center; /* Для центрирования текста */
-  justify-content: center; /* Для центрирования текста */
-  flex-shrink: 0; /* Предотвращаем сжатие */
-}
-
-.auth-buttons .auth-button:hover {
-  background-color: var(--accent-color);
-  color: var(--text-color-primary);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 10px; /* Отступ между текстом приветствия и кнопками */
-  color: var(--text-color-primary);
-}
-
-.user-info span {
-  font-size: 16px;
-  font-weight: bold;
-  color: var(--text-color-primary);
-  white-space: nowrap; /* Чтобы имя не переносилось */
-}
-
-.logout {
-  background-color: transparent;
-  color: var(--accent-color);
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 0;
-  border-radius: 0;
-}
-
-.logout:hover {
-  text-decoration: underline;
-}
-
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  font-size: 18px;
-  color: var(--text-color-primary); /* Используем переменную */
-}
-
-/* Стили для SearchPage */
-.search-page {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  color: var(--text-color-primary);
-}
-
-.search-input-container {
-  margin-bottom: 30px;
-  position: relative;
+/* Стили для поиска и overlay */
+.search-container {
+  flex: 1;
+  max-width: 600px;
+  margin: 0 20px;
 }
 
 .search-input {
   width: 100%;
-  padding: 12px 20px 12px 45px; /* Увеличиваем padding-left для иконки */
+  padding: 12px 20px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 25px;
-  border: none;
-  background-color: var(--tertiary-bg-color); /* Более темный фон для поля ввода */
   color: var(--text-color-primary);
   font-size: 16px;
   outline: none;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.search-input::placeholder {
-  color: var(--text-color-secondary);
+.search-input:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .search-input:focus {
-  background-color: var(--hover-color); /* При фокусе темнее */
-  box-shadow: 0 0 0 2px var(--accent-color); /* Обводка акцентным цветом */
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(252, 56, 93, 0.2);
 }
 
-/* Иконка поиска (можно добавить через ::before или background-image) */
-.search-input-container::before {
-  content: '\1F50D'; /* Юникод символ лупы */
-  font-family: 'Font Awesome 5 Free'; /* Если используем Font Awesome */
-  font-weight: 900;
-  position: absolute;
-  left: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-color-secondary);
-  font-size: 20px;
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
 }
 
-.loading-text, .error-text, .no-results-text {
-  text-align: center;
-  margin-top: 30px;
-  font-size: 18px;
-  color: var(--text-color-secondary);
-}
-
-.error-text {
-  color: var(--accent-color);
-}
-
-.search-results {
-  margin-top: 40px;
-}
-
-.results-section {
-  margin-bottom: 50px;
-}
-
-.results-section h2 {
-  font-size: 24px;
-  font-weight: 700;
+.user-greeting {
   color: var(--text-color-primary);
-  margin-bottom: 25px;
-  border-bottom: 1px solid var(--hover-color); /* Разделитель */
-  padding-bottom: 10px;
+  font-weight: 500;
+  margin-right: 15px;
+  white-space: nowrap;
 }
 
-.track-list, .artist-list, .album-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* Адаптивная сетка */
-  gap: 25px;
-}
-
-.track-item, .artist-item, .album-item {
-  background-color: var(--tertiary-bg-color);
-  border-radius: 12px;
-  overflow: hidden;
-  text-align: center;
-  padding: 15px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
+.auth-buttons-group {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
 }
 
-.track-item:hover, .artist-item:hover, .album-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-}
-
-.track-cover, .album-cover {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
-
-.artist-image {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%; /* Круглое изображение для артистов */
-  object-fit: cover;
-  margin-bottom: 10px;
-  border: 3px solid var(--accent-color); /* Обводка для артистов */
-}
-
-.track-info, .album-info {
-  text-align: left;
-  width: 100%;
-}
-
-.track-title, .album-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-  margin-bottom: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.track-artist, .album-artist {
-  font-size: 14px;
-  color: var(--text-color-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.artist-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-color-primary);
-  margin-top: 10px;
-}
-
-/* Медиа-запросы для адаптивности */
-@media (max-width: 768px) {
-  .track-list, .artist-list, .album-list {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  }
-
-  .search-input {
-    font-size: 14px;
-    padding: 10px 15px 10px 40px;
-  }
-
-  .search-input-container::before {
-    font-size: 18px;
-    left: 12px;
-  }
-
-  .results-section h2 {
-    font-size: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .track-list, .artist-list, .album-list {
-    grid-template-columns: 1fr; /* Одна колонка на очень маленьких экранах */
-  }
-
-  .search-page {
-    padding: 15px;
-  }
-
-  .track-cover, .album-cover {
-    height: auto;
-  }
-
-  .artist-image {
-    width: 120px;
-    height: 120px;
-  }
-}
-
-/* Стили для оверлея поиска */
+/* Стили для search overlay */
 .search-overlay {
   position: fixed;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+  opacity: 0;
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+.search-overlay-content {
   width: 100%;
+  max-width: 600px;
+  background: rgba(28, 28, 30, 0.95);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  margin: 0 20px;
+  max-height: 80vh;
+  overflow: hidden;
+  transform: translateY(-20px);
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  to {
+    transform: translateY(0);
+  }
+}
+
+.search-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.search-input-overlay {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.search-input-overlay:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(252, 56, 93, 0.2);
+}
+
+.search-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.search-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.8);
+  gap: 12px;
+  font-size: 16px;
+  flex-direction: column;
+}
+
+.search-loading i {
+  font-size: 24px;
+  color: var(--accent-color);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.search-results {
+  max-height: calc(80vh - 100px);
+  overflow-y: auto;
+  padding: 0;
+}
+
+.search-section {
+  margin-bottom: 8px;
+}
+
+.search-section-title {
+  padding: 16px 20px 8px 20px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  opacity: 0.9;
+}
+
+.search-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.search-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.search-item:last-child {
+  border-bottom: none;
+}
+
+.search-item-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(252, 56, 93, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.search-item-icon i {
+  font-size: 18px;
+  color: var(--accent-color);
+}
+
+.search-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-item-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-item-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-item-duration, .search-item-type {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.search-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.search-empty i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.search-empty-subtitle {
+  font-size: 14px;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Специфичные стили для типов контента */
+.track-item .search-item-icon {
+  background: rgba(0, 122, 255, 0.15);
+}
+
+.track-item .search-item-icon i {
+  color: #007AFF;
+}
+
+.album-item .search-item-icon {
+  background: rgba(255, 149, 0, 0.15);
+}
+
+.album-item .search-item-icon i {
+  color: #FF9500;
+}
+
+.artist-item .search-item-icon {
+  background: rgba(52, 199, 89, 0.15);
+}
+
+.artist-item .search-item-icon i {
+  color: #34C759;
+}
+
+/* Улучшенная прокрутка */
+.search-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.search-results::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Стили для пользовательской аналитики */
+.user-analytics {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.analytics-header h2 {
+  margin: 0;
+  font-size: 2.2em;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-color), #ff6b9d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.period-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.period-selector span {
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  margin-right: 10px;
+}
+
+.period-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-color-secondary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.period-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--text-color-primary);
+}
+
+.period-btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(252, 56, 93, 0.3);
+}
+
+/* Сетка статистики */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.search-stats .stat-icon {
+  background: linear-gradient(135deg, #007AFF, #5AC8FA);
+  color: #fff;
+}
+
+.listening-stats .stat-icon {
+  background: linear-gradient(135deg, var(--accent-color), #ff6b9d);
+  color: #fff;
+}
+
+.activity-stats .stat-icon {
+  background: linear-gradient(135deg, #34C759, #30D158);
+  color: #fff;
+}
+
+.stat-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-number {
+  font-size: 2.5em;
+  font-weight: 700;
+  color: var(--text-color-primary);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  color: var(--text-color-secondary);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.stat-details {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Секции аналитики */
+.analytics-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.analytics-section h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--text-color-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.analytics-section h3 i {
+  color: var(--accent-color);
+  font-size: 1.2em;
+}
+
+/* История поиска */
+.search-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.search-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.search-query {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-color-primary);
+  margin-bottom: 8px;
+}
+
+.search-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+  flex-wrap: wrap;
+}
+
+.search-results {
+  color: #007AFF;
+  font-weight: 500;
+}
+
+.search-time {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.search-clicked {
+  background: rgba(52, 199, 89, 0.2);
+  color: #34C759;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Топ треки */
+.top-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.track-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.track-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.track-rank {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-color);
+  min-width: 40px;
+  text-align: center;
+}
+
+.track-content {
+  flex: 1;
+}
+
+.track-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-color-primary);
+  margin-bottom: 6px;
+}
+
+.track-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.track-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.track-stats i {
+  color: var(--accent-color);
+}
+
+.track-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar {
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.9); /* Затемненный фон */
+  background: linear-gradient(90deg, var(--accent-color), #ff6b9d);
+  transition: width 0.3s ease;
+}
+
+/* Временная линия активности */
+.activity-timeline {
+  display: flex;
+  gap: 8px;
+  padding: 20px 0;
+  overflow-x: auto;
+  min-height: 120px;
+  align-items: flex-end;
+}
+
+.timeline-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+  gap: 8px;
+}
+
+.day-date {
+  font-size: 11px;
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  text-align: center;
+}
+
+.day-activities {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 80px;
+  position: relative;
+}
+
+.activity-bar {
+  min-width: 16px;
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  transition: all 0.3s ease;
+  min-height: 8px;
+}
+
+.search-bar {
+  background: linear-gradient(180deg, #007AFF, #5AC8FA);
+}
+
+.listening-bar {
+  background: linear-gradient(180deg, var(--accent-color), #ff6b9d);
+}
+
+.activity-count {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.activity-bar:hover .activity-count {
+  opacity: 1;
+}
+
+.day-total {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+}
+
+.timeline-legend {
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Выравнивание сверху, чтобы поле поиска было ближе к верху */
-  z-index: 2000; /* Выше всего остального */
-  padding-top: 50px; /* Отступ сверху для поля поиска */
-  overflow-y: auto; /* Для прокрутки, если много результатов */
+  gap: 24px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.close-search-button {
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Состояния загрузки и ошибок */
+.analytics-loading,
+.analytics-error,
+.analytics-empty {
+  display: flex;
+}
+
+.profile-page {
+  padding: 40px;
+  background-color: var(--primary-bg-color);
+  color: var(--text-color-primary);
+}
+
+.profile-page h1 {
+  font-size: 3em;
+  font-weight: 700;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #007AFF, #5AC8FA); /* Синий градиент для заголовка профиля */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.profile-page p {
+  font-size: 1.1em;
+  color: var(--text-color-secondary);
+  margin-bottom: 10px;
+}
+
+.listener-profile-info {
+  margin-top: 30px;
+  background: var(--secondary-bg-color);
+  padding: 30px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.listener-profile-info h2 {
+  font-size: 2em;
+  font-weight: 600;
+  color: var(--text-color-primary);
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+/* Общие стили для секций аналитики в UserAnalytics */
+.analytics-section {
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.analytics-section h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--text-color-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.analytics-section h3 i {
+  color: var(--accent-color);
+  font-size: 1.2em;
+}
+
+/* Стили для карточек статистики */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.search-stats .stat-icon {
+  background: linear-gradient(135deg, #007AFF, #5AC8FA);
+  color: #fff;
+}
+
+.listening-stats .stat-icon {
+  background: linear-gradient(135deg, var(--accent-color), #ff6b9d);
+  color: #fff;
+}
+
+.activity-stats .stat-icon {
+  background: linear-gradient(135deg, #34C759, #30D158);
+  color: #fff;
+}
+
+.stat-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-number {
+  font-size: 2.5em;
+  font-weight: 700;
+  color: var(--text-color-primary);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  color: var(--text-color-secondary);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.stat-details {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Стили для списка треков/артистов (топ-треки, топ-артисты, история прослушиваний) */
+.top-tracks, .search-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.track-item, .search-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.track-item:hover, .search-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.track-rank, .search-item-rank {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-color);
+  min-width: 40px;
+  text-align: center;
+}
+
+.track-content, .search-item-content {
+  flex: 1;
+}
+
+.track-title, .search-item-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-color-primary);
+  margin-bottom: 6px;
+}
+
+.track-stats, .search-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+  flex-wrap: wrap; /* Для истории поиска */
+}
+
+.track-stats span, .search-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.track-stats i, .search-meta i {
+  color: var(--accent-color);
+}
+
+/* Стили для индикаторов загрузки/ошибок/пустых состояний */
+.analytics-loading, .analytics-error, .analytics-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  text-align: center;
+  color: var(--text-color-secondary);
+}
+
+.analytics-loading i, .analytics-error i, .analytics-empty i {
+  font-size: 48px;
+  color: var(--accent-color);
+  margin-bottom: 20px;
+}
+
+.analytics-loading p, .analytics-error p, .analytics-empty p {
+  font-size: 1.1em;
+  margin: 0;
+}
+
+.analytics-empty-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 10px;
+}
+
+/* Стили для временной линии активности */
+.activity-timeline {
+  display: flex;
+  gap: 8px;
+  padding: 20px 0;
+  overflow-x: auto;
+  min-height: 120px;
+  align-items: flex-end;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeline-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+  gap: 8px;
+  position: relative;
+}
+
+.day-date {
+  font-size: 11px;
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  text-align: center;
+}
+
+.day-activities {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 80px; /* Фиксированная высота для шкалы */
+  position: relative;
+  width: 100%;
+  justify-content: center;
+}
+
+.activity-bar {
+  min-width: 16px;
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  transition: all 0.3s ease;
+  min-height: 8px;
+  flex-grow: 1; /* Чтобы бары занимали доступное место */
+}
+
+.search-bar {
+  background: linear-gradient(180deg, #007AFF, #5AC8FA);
+}
+
+.listening-bar {
+  background: linear-gradient(180deg, var(--accent-color), #ff6b9d);
+}
+
+.activity-count {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  background: none;
-  border: none;
-  color: var(--text-color-primary); /* Белый цвет */
-  font-size: 30px;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+.activity-bar:hover .activity-count {
+  opacity: 1;
+}
+
+.day-total {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-color-primary);
+  margin-top: 5px;
+}
+
+.timeline-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Стили для селектора периода */
+.period-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.period-selector span {
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  margin-right: 10px;
+}
+
+.period-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-color-secondary);
+  padding: 8px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: color 0.2s ease;
-  z-index: 2001; /* Выше оверлея */
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.close-search-button:hover {
-  color: var(--accent-color); /* Акцентный цвет при наведении */
+.period-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--text-color-primary);
 }
 
-/* Стили для SearchPage внутри оверлея (переопределяем некоторые) */
-.search-overlay .search-page {
-  width: 80%; /* Ширина страницы поиска в оверлее */
-  max-width: 900px;
-  padding: 0; /* Убираем внутренний padding, так как он уже есть в оверлее */
-}
-
-.search-overlay .search-input-container {
-  margin-bottom: 30px;
-}
-
-/* НОВЫЙ СТИЛЬ: Контейнер для кнопок аутентификации (логин/регистрация, профиль/выйти) */
-.auth-buttons-group {
-    display: flex;
-    align-items: center;
-    gap: 10px; /* Отступ между элементами внутри группы кнопок */
+.period-btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(252, 56, 93, 0.3);
 }

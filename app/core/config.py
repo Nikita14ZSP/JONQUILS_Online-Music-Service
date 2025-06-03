@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     # ClickHouse настройки для аналитики
     CLICKHOUSE_HOST: str = "localhost"
     CLICKHOUSE_PORT: int = 9000
-    CLICKHOUSE_USER: str = "default"
-    CLICKHOUSE_PASSWORD: str = ""
-    CLICKHOUSE_DATABASE: str = "music_analytics"
+    CLICKHOUSE_USER: str = "admin"
+    CLICKHOUSE_PASSWORD: str = "admin123"
+    CLICKHOUSE_DATABASE: str = "jonquils_analytics"
 
     # Elasticsearch настройки для поиска
     ELASTICSEARCH_HOST: str = "localhost"

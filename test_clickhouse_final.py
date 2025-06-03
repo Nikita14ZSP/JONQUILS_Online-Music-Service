@@ -37,7 +37,7 @@ async def test_clickhouse_service():
         print("✅ Таблицы созданы")
         
         # Проверяем таблицы
-        result = await service.execute_query("SHOW TABLES FROM music_analytics")
+        result = await service.execute_query("SHOW TABLES FROM jonquils_analytics")
         print(f"📊 Таблицы в базе данных: {result}")
         
         # Тестируем вставку данных
@@ -55,7 +55,7 @@ async def test_clickhouse_service():
             print("❌ Ошибка вставки данных")
         
         # Проверяем количество записей
-        count_result = await service.execute_query("SELECT COUNT(*) as count FROM music_analytics.listening_events")
+        count_result = await service.execute_query("SELECT COUNT(*) as count FROM jonquils_analytics.listening_events")
         print(f"📊 Количество записей в listening_events: {count_result}")
         
         # Тестируем аналитику

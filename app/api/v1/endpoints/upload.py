@@ -3,10 +3,10 @@ import aiofiles
 import os
 from sqlalchemy.orm import Session
 from app.db.database import get_db # Исправленный импорт get_db для получения сессии БД
-from app.schemas.track import TrackUploadFromFile, Track as TrackSchema # Импорт схемы Track и TrackUploadFromFile
+from app.schemas.track import TrackUploadFromFile, Track as TrackSchema, TrackMetadataForAlbumUpload # Импорт схемы Track и TrackUploadFromFile
 from app.db.models import Track as TrackModel # Импорт модели Track
 from datetime import datetime
-from app.schemas.album import AlbumCreate, Album as AlbumSchema, TrackMetadataForAlbumUpload
+from app.schemas.album import AlbumCreate, Album as AlbumSchema
 from app.db.models import Album as AlbumModel # Импорт модели Album
 
 router = APIRouter()

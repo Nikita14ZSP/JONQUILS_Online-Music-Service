@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ArtistDashboard from '../components/ArtistDashboard';
+import UserAnalytics from '../components/UserAnalytics';
 
 const ProfilePage: React.FC = () => {
   const [userRole, setUserRole] = useState<string | null>(null); 
   const [userName, setUserName] = useState<string | null>(null); 
+  const [userId, setUserId] = useState<number | null>(null);
   const [artistId, setArtistId] = useState<string | null>(null); 
   const [loading, setLoading] = useState<boolean>(true); // Состояние загрузки
   const [error, setError] = useState<string | null>(null); // Состояние ошибки
@@ -21,7 +23,7 @@ const ProfilePage: React.FC = () => {
           return;
         }
 
-        const response = await fetch('http://localhost:8000/api/v1/auth/me', { // Исправлен порт
+        const response = await fetch('http://localhost:8000/api/v1/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -32,14 +34,15 @@ const ProfilePage: React.FC = () => {
           console.log('Данные пользователя из /api/v1/auth/me:', userData);
           setUserRole(userData.role);
           setUserName(userData.username || userData.full_name);
+          setUserId(userData.id);
           if (userData.artist_profile_id) {
             setArtistId(userData.artist_profile_id.toString());
           } else {
-            setArtistId(null); // Очищаем artistId, если пользователь не артист или нет профиля
+            setArtistId(null);
           }
-          // Также можно сохранить роль в localStorage, если она нужна для других частей приложения
           localStorage.setItem('user_role', userData.role);
           localStorage.setItem('user_name', userData.username || userData.full_name);
+          localStorage.setItem('user_id', userData.id.toString());
           if (userData.artist_profile_id) {
             localStorage.setItem('artist_id', userData.artist_profile_id.toString());
           } else {
@@ -49,10 +52,10 @@ const ProfilePage: React.FC = () => {
         } else {
           const errorData = await response.json();
           setError(`Не удалось получить данные профиля: ${errorData.detail || response.statusText}`);
-          // Очищаем локальное хранилище при ошибке, чтобы принудить повторный вход
           localStorage.removeItem('access_token');
           localStorage.removeItem('user_role');
           localStorage.removeItem('user_name');
+          localStorage.removeItem('user_id');
           localStorage.removeItem('artist_id');
         }
       } catch (err: any) {
@@ -60,6 +63,7 @@ const ProfilePage: React.FC = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_role');
         localStorage.removeItem('user_name');
+        localStorage.removeItem('user_id');
         localStorage.removeItem('artist_id');
       } finally {
         setLoading(false);
@@ -67,7 +71,7 @@ const ProfilePage: React.FC = () => {
     };
 
     fetchUserProfile();
-  }, []); // Пустой массив зависимостей, чтобы эффект запускался только один раз при монтировании
+  }, []);
 
   if (loading) {
     return <div className="profile-container">Загрузка профиля...</div>;
@@ -78,7 +82,7 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="profile-container" style={{ padding: '20px', color: '#fff' }}>
+    <div className="main-content profile-page">
       <h1>Профиль</h1>
       <p>Добро пожаловать, {userName || 'Пользователь'}!</p>
       <p>Ваша роль: {userRole === 'artist' ? 'Артист' : 'Слушатель'}</p>
@@ -87,13 +91,12 @@ const ProfilePage: React.FC = () => {
         <ArtistDashboard />
       )}
 
-      {userRole === 'listener' && (
-        <div className="listener-profile-info" style={{ marginTop: '20px' }}>
-          <h2>Ваши плейлисты и история</h2>
-          <p>Скоро здесь появится больше информации о вашей активности.</p>
+      {userRole === 'listener' && userId && (
+        <div className="listener-profile-info">
+          <UserAnalytics userId={userId} />
         </div>
       )}
-       <Link to="/" style={{ marginTop: '20px', display: 'inline-block' }}>На главную</Link>
+       <Link to="/" className="auth-button-secondary" style={{ marginTop: '20px' }}>На главную</Link>
     </div>
   );
 };
