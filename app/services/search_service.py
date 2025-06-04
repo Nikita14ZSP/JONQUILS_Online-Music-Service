@@ -18,7 +18,6 @@ class SearchService:
     
     def __init__(self, db: AsyncSession):
         self.db = db
-        # Настройка подключения к Elasticsearch
         es_config = {
             'hosts': [f"http://{settings.ELASTICSEARCH_HOST}:{settings.ELASTICSEARCH_PORT}"]
         }
@@ -29,7 +28,6 @@ class SearchService:
                 settings.ELASTICSEARCH_PASSWORD
             )
         
-        # Пытаемся подключиться к Elasticsearch с обработкой ошибок
         try:
             self.es = AsyncElasticsearch(**es_config)
         except Exception as e:
@@ -39,7 +37,7 @@ class SearchService:
     async def index_track(self, track: Track, artist_name: str = None, album_title: str = None, genre_name: str = None):
         """Индексация трека в Elasticsearch"""
         if not self.es:
-            return  # Заглушка
+            return  
         
         doc = {
             "id": track.id,
@@ -95,7 +93,7 @@ class SearchService:
     async def index_album(self, album: Album, artist_name: str = None):
         """Индексация альбома в Elasticsearch"""
         if not self.es:
-            return  # Заглушка
+            return  
 
         doc = {
             "id": album.id,
@@ -119,13 +117,13 @@ class SearchService:
     async def delete_entity(self, index: str, entity_id: int):
         """Удаление сущности из Elasticsearch по ID и индексу"""
         if not self.es:
-            return  # Заглушка
+            return  
 
         try:
             await self.es.delete(
                 index=index,
                 id=entity_id,
-                ignore=404 # Игнорируем ошибку, если документ не найден (уже удален)
+                ignore=404 
             )
             print(f"Successfully deleted entity {entity_id} from index {index}.")
         except Exception as e:
@@ -134,14 +132,10 @@ class SearchService:
     async def multi_entity_search(self, query: str, limit: int = 10) -> Dict[str, List[Union[TrackWithDetails, ArtistSchema, AlbumSchema]]]:
         """Универсальный поиск по трекам, артистам и альбомам"""
         if not self.es:
-            # Fallback к поиску через PostgreSQL (если нужно)
-            # Для простоты, здесь пока не делаем сложный fallback, т.к. цель - Elasticsearch
             return {"tracks": [], "artists": [], "albums": []}
 
-        # Запросы для разных типов сущностей
         search_requests = []
 
-        # Поиск треков
         track_query = {
             "query": {
                 "multi_match": {
@@ -152,10 +146,9 @@ class SearchService:
             },
             "size": limit
         }
-        search_requests.append({"index": "tracks"}) # Заголовок для треков
+        search_requests.append({"index": "tracks"}) 
         search_requests.append(track_query)
 
-        # Поиск артистов
         artist_query = {
             "query": {
                 "multi_match": {
@@ -166,10 +159,9 @@ class SearchService:
             },
             "size": limit
         }
-        search_requests.append({"index": "artists"}) # Заголовок для артистов
+        search_requests.append({"index": "artists"}) 
         search_requests.append(artist_query)
 
-        # Поиск альбомов
         album_query = {
             "query": {
                 "multi_match": {
@@ -180,37 +172,34 @@ class SearchService:
             },
             "size": limit
         }
-        search_requests.append({"index": "albums"}) # Заголовок для альбомов
+        search_requests.append({"index": "albums"}) 
         search_requests.append(album_query)
 
         try:
             responses = await self.es.msearch(body=search_requests)
-            print(f"Elasticsearch msearch raw response: {responses}") # Временный лог
+            print(f"Elasticsearch msearch raw response: {responses}") 
             
             tracks_data = []
             artists_data = []
             albums_data = []
 
             if responses and responses.get("responses"):
-                # Обработка результатов треков
                 track_hits = responses["responses"][0]["hits"]["hits"]
-                print(f"Track hits from Elasticsearch: {track_hits}") # Временный лог
+                print(f"Track hits from Elasticsearch: {track_hits}") 
                 track_ids = [hit["_source"]["id"] for hit in track_hits]
-                print(f"Extracted track IDs: {track_ids}") # Временный лог
+                print(f"Extracted track IDs: {track_ids}") 
                 tracks_data = await self._get_tracks_with_details(track_ids)
 
-                # Обработка результатов артистов
                 artist_hits = responses["responses"][1]["hits"]["hits"]
-                print(f"Artist hits from Elasticsearch: {artist_hits}") # Временный лог
+                print(f"Artist hits from Elasticsearch: {artist_hits}") 
                 artist_ids = [hit["_source"]["id"] for hit in artist_hits]
-                print(f"Extracted artist IDs: {artist_ids}") # Временный лог
+                print(f"Extracted artist IDs: {artist_ids}") 
                 artists_data = await self._get_artists_by_ids(artist_ids)
 
-                # Обработка результатов альбомов
                 album_hits = responses["responses"][2]["hits"]["hits"]
-                print(f"Album hits from Elasticsearch: {album_hits}") # Временный лог
+                print(f"Album hits from Elasticsearch: {album_hits}") 
                 album_ids = [hit["_source"]["id"] for hit in album_hits]
-                print(f"Extracted album IDs: {album_ids}") # Временный лог
+                print(f"Extracted album IDs: {album_ids}") 
                 albums_data = await self._get_albums_by_ids(album_ids)
 
             return {
@@ -232,7 +221,6 @@ class SearchService:
         result = await self.db.execute(query)
         artists_db = result.scalars().all()
         
-        # Сохраняем порядок
         artist_dict = {artist.id: ArtistSchema.model_validate(artist) for artist in artists_db}
         return [artist_dict[artist_id] for artist_id in artist_ids if artist_id in artist_dict]
 
@@ -241,7 +229,6 @@ class SearchService:
         if not album_ids:
             return []
         
-        # Для альбомов также может понадобиться имя артиста
         query = (
             select(Album, Artist.name.label("artist_name"))
             .outerjoin(Artist, Album.artist_id == Artist.id)
@@ -255,7 +242,7 @@ class SearchService:
             album, artist_name = row
             album_with_details = AlbumSchema(
                 **album.__dict__,
-                artist_name=artist_name # Добавляем имя артиста, если нужно в схеме Album
+                artist_name=artist_name 
             )
             album_dict[album.id] = album_with_details
 
@@ -266,7 +253,6 @@ class SearchService:
         if not self.es:
             return
         
-        # Маппинг для треков (уже есть, но можно обновить или убедиться)
         track_mapping = {
             "properties": {
                 "id": {"type": "integer"},
@@ -316,7 +302,6 @@ class SearchService:
             }
         }
 
-        # Маппинг для артистов
         artist_mapping = {
             "properties": {
                 "id": {"type": "integer"},
@@ -338,7 +323,6 @@ class SearchService:
             }
         }
 
-        # Маппинг для альбомов
         album_mapping = {
             "properties": {
                 "id": {"type": "integer"},
@@ -381,7 +365,6 @@ class SearchService:
 
         print("Starting full reindex of all tracks, artists, and albums to Elasticsearch...")
 
-        # Reindex Tracks
         query_tracks = (
             select(
                 Track,
@@ -405,7 +388,6 @@ class SearchService:
             )
         print(f"Indexed {len(rows_tracks)} tracks.")
 
-        # Reindex Artists
         query_artists = select(Artist)
         result_artists = await self.db.execute(query_artists)
         artists_db = result_artists.scalars().all()
@@ -413,7 +395,6 @@ class SearchService:
             await self.index_artist(artist)
         print(f"Indexed {len(artists_db)} artists.")
 
-        # Reindex Albums
         query_albums = select(Album, Artist.name.label("artist_name")).outerjoin(Artist, Album.artist_id == Artist.id)
         result_albums = await self.db.execute(query_albums)
         rows_albums = result_albums.all()
@@ -431,7 +412,6 @@ class SearchService:
             # Fallback к поиску через PostgreSQL
             return await self.search_tracks_fallback(search_query)
         
-        # Построение запроса для Elasticsearch
         query = {
             "bool": {
                 "must": [],
@@ -439,23 +419,21 @@ class SearchService:
             }
         }
         
-        # Основной текстовый поиск
         if search_query.query:
             query["bool"]["must"].append({
                 "multi_match": {
                     "query": search_query.query,
                     "fields": [
-                        "title^3",      # Больший вес для названия трека
-                        "artist_name^2", # Средний вес для исполнителя
-                        "album_title",   # Обычный вес для альбома
-                        "genre_name"     # Обычный вес для жанра
+                        "title^3",      
+                        "artist_name^2", 
+                        "album_title",   
+                        "genre_name"     
                     ],
-                    "fuzziness": "AUTO",  # Автоматическая нечеткость для опечаток
+                    "fuzziness": "AUTO",  
                     "operator": "and"
                 }
             })
         
-        # Фильтры
         if search_query.artist:
             query["bool"]["filter"].append({
                 "match": {
@@ -485,7 +463,6 @@ class SearchService:
                 range_filter["range"]["duration_ms"]["lte"] = search_query.duration_to
             query["bool"]["filter"].append(range_filter)
         
-        # Выполнение поиска
         try:
             response = await self.es.search(
                 index="tracks",
@@ -493,12 +470,11 @@ class SearchService:
                 from_=search_query.offset,
                 size=search_query.limit,
                 sort=[
-                    {"_score": {"order": "desc"}},  # Сортировка по релевантности
-                    {"popularity": {"order": "desc"}}  # Затем по популярности
+                    {"_score": {"order": "desc"}},  
+                    {"popularity": {"order": "desc"}}  
                 ]
             )
             
-            # Получение полной информации о треках из PostgreSQL
             track_ids = [hit["_source"]["id"] for hit in response["hits"]["hits"]]
             tracks = await self._get_tracks_with_details(track_ids)
             
@@ -516,7 +492,6 @@ class SearchService:
     
     async def search_tracks_fallback(self, search_query: TrackSearchQuery) -> TrackSearchResponse:
         """Fallback поиск через PostgreSQL"""
-        # Базовый запрос с джойнами
         base_query = (
             select(
                 Track,
@@ -531,10 +506,8 @@ class SearchService:
             .outerjoin(Genre, Track.genre_id == Genre.id)
         )
         
-        # Добавляем условия поиска
         conditions = []
         
-        # Текстовый поиск
         if search_query.query:
             search_term = f"%{search_query.query}%"
             conditions.append(
@@ -546,7 +519,6 @@ class SearchService:
                 )
             )
         
-        # Фильтры
         if search_query.artist:
             conditions.append(Artist.name.ilike(f"%{search_query.artist}%"))
         
@@ -562,11 +534,9 @@ class SearchService:
         if search_query.duration_to:
             conditions.append(Track.duration_ms <= search_query.duration_to)
         
-        # Применяем условия
         if conditions:
             base_query = base_query.where(and_(*conditions))
         
-        # Подсчет общего количества
         from sqlalchemy import func
         count_query = select(func.count()).select_from(
             base_query.subquery()
@@ -574,10 +544,9 @@ class SearchService:
         total_result = await self.db.execute(count_query)
         total = total_result.scalar()
         
-        # Основной запрос с пагинацией и сортировкой
         query = (
             base_query
-            .order_by(Track.popularity.desc())  # Сортировка по популярности
+            .order_by(Track.popularity.desc())  
             .offset(search_query.offset)
             .limit(search_query.limit)
         )
@@ -585,7 +554,6 @@ class SearchService:
         result = await self.db.execute(query)
         rows = result.all()
         
-        # Формируем результат
         tracks = []
         for row in rows:
             track = row[0]
@@ -629,7 +597,6 @@ class SearchService:
         result = await self.db.execute(query)
         rows = result.all()
         
-        # Создаем словарь для сохранения порядка
         track_dict = {}
         for row in rows:
             track = row[0]
@@ -643,13 +610,11 @@ class SearchService:
             )
             track_dict[track.id] = track_with_details
         
-        # Возвращаем в том же порядке, что и track_ids
         return [track_dict[track_id] for track_id in track_ids if track_id in track_dict]
     
     async def suggest_tracks(self, query: str, limit: int = 5) -> List[str]:
         """Автодополнение для поиска треков"""
         if not self.es:
-            # Fallback автодополнение через PostgreSQL
             return await self._suggest_tracks_fallback(query, limit)
         
         try:
@@ -704,20 +669,18 @@ class SearchService:
         """Поиск треков с простыми параметрами (для совместимости с API endpoint)"""
         from app.schemas.track import TrackSearchQuery
         
-        # Создаем объект поискового запроса
         search_query = TrackSearchQuery(
             query=query,
             genre=genre,
             artist=artist,
             album=album,
             limit=limit,
-            offset=offset # Теперь offset передается
+            offset=offset 
         )
         
-        # Используем основной метод поиска
         if self.es:
             result = await self.search_tracks_elasticsearch(search_query)
         else:
             result = await self.search_tracks_fallback(search_query)
         
-        return result # Возвращаем полный TrackSearchResponse
+        return result 
