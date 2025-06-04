@@ -15,7 +15,6 @@ import os
 import tempfile
 from unittest.mock import AsyncMock, MagicMock
 
-# Импорты приложения
 from app.main import app
 from app.core.config import settings
 from app.db.database import get_db, Base
@@ -24,10 +23,6 @@ from app.services.clickhouse_service import clickhouse_service
 from app.services.s3_service import s3_service
 from app.schemas.user import User
 
-
-# ================================
-# Конфигурация pytest
-# ================================
 
 def pytest_configure(config):
     """Конфигурация pytest"""
@@ -40,11 +35,6 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "clickhouse: tests requiring ClickHouse")
     config.addinivalue_line("markers", "elasticsearch: tests requiring Elasticsearch")
 
-
-# ================================
-# Фикстуры для async/await
-# ================================
-
 @pytest.fixture(scope="session")
 def event_loop():
     """Создание event loop для всей сессии"""
@@ -53,10 +43,6 @@ def event_loop():
     yield loop
     loop.close()
 
-
-# ================================
-# Фикстуры базы данных
-# ================================
 
 @pytest_asyncio.fixture
 async def test_db_engine():
@@ -97,10 +83,6 @@ async def test_app(test_db_session):
     app.dependency_overrides.clear()
 
 
-# ================================
-# Фикстуры HTTP клиента
-# ================================
-
 @pytest_asyncio.fixture
 async def async_client(test_app) -> AsyncGenerator[AsyncClient, None]:
     """Асинхронный HTTP клиент для тестирования API"""
@@ -111,7 +93,6 @@ async def async_client(test_app) -> AsyncGenerator[AsyncClient, None]:
 @pytest_asyncio.fixture
 async def auth_client(async_client, test_user) -> AsyncGenerator[AsyncClient, None]:
     """Авторизованный HTTP клиент"""
-    # Мокаем аутентификацию
     def override_get_current_user():
         return test_user
     
@@ -132,10 +113,6 @@ async def admin_client(async_client, admin_user) -> AsyncGenerator[AsyncClient, 
     if get_current_user in app.dependency_overrides:
         del app.dependency_overrides[get_current_user]
 
-
-# ================================
-# Фикстуры пользователей
-# ================================
 
 @pytest.fixture
 def test_user() -> User:
@@ -162,17 +139,11 @@ def admin_user() -> User:
         is_active=True
     )
 
-
-# ================================
-# Фикстуры внешних сервисов
-# ================================
-
 @pytest.fixture
 def mock_clickhouse_service():
     """Мок для ClickHouse сервиса"""
     mock = AsyncMock()
-    
-    # Настройка стандартных ответов
+
     mock.test_connection.return_value = True
     mock.create_tables.return_value = True
     mock.get_popular_tracks.return_value = [
@@ -192,8 +163,7 @@ def mock_clickhouse_service():
 def mock_s3_service():
     """Мок для S3 сервиса"""
     mock = MagicMock()
-    
-    # Настройка стандартных ответов
+
     mock.upload_track.return_value = {
         'success': True,
         's3_key': 'test/track.mp3',
@@ -232,11 +202,6 @@ def mock_elasticsearch():
     mock.delete.return_value = {"result": "deleted"}
     
     return mock
-
-
-# ================================
-# Фикстуры тестовых данных
-# ================================
 
 @pytest.fixture
 def sample_track_data():
@@ -284,22 +249,15 @@ def sample_analytics_data():
         }
     ]
 
-
-# ================================
-# Фикстуры файлов
-# ================================
-
 @pytest.fixture
 def temp_audio_file():
     """Временный аудио файл для тестирования"""
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
-        # Создаем фиктивные аудио данные (не настоящий MP3)
         temp_file.write(b"ID3\x03\x00\x00\x00" + b"\x00" * 1000)
         temp_file_path = temp_file.name
     
     yield temp_file_path
     
-    # Очистка
     try:
         os.unlink(temp_file_path)
     except FileNotFoundError:
@@ -310,27 +268,19 @@ def temp_audio_file():
 def temp_image_file():
     """Временный файл изображения для тестирования"""
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-        # Создаем фиктивные данные изображения
         temp_file.write(b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 1000)
         temp_file_path = temp_file.name
     
     yield temp_file_path
     
-    # Очистка
     try:
         os.unlink(temp_file_path)
     except FileNotFoundError:
         pass
 
-
-# ================================
-# Фикстуры окружения
-# ================================
-
 @pytest.fixture(autouse=True)
 def setup_test_environment():
     """Автоматическая настройка тестового окружения"""
-    # Устанавливаем тестовые переменные окружения
     test_env = {
         "TESTING": "true",
         "DATABASE_URL": "sqlite+aiosqlite:///:memory:",
@@ -347,17 +297,12 @@ def setup_test_environment():
     
     yield
     
-    # Восстанавливаем оригинальные значения
     for key, value in original_env.items():
         if value is None:
             os.environ.pop(key, None)
         else:
             os.environ[key] = value
 
-
-# ================================
-# Вспомогательные фикстуры
-# ================================
 
 @pytest.fixture
 def mock_datetime():
@@ -383,13 +328,9 @@ def performance_monitor():
     end_time = time.time()
     
     duration = end_time - start_time
-    if duration > 1.0:  # Предупреждение о медленных тестах
-        print(f"\n⚠️  Медленный тест: {duration:.2f}s")
+    if duration > 1.0:  
+        print(f"\n  Медленный тест: {duration:.2f}s")
 
-
-# ================================
-# Фикстуры для интеграционных тестов
-# ================================
 
 @pytest_asyncio.fixture
 async def real_clickhouse_client():
@@ -411,16 +352,11 @@ def real_s3_client():
         pytest.skip("Интеграционные тесты отключены")
     
     try:
-        # Простая проверка доступности S3
         s3_service.get_storage_stats()
         yield s3_service
     except Exception as e:
         pytest.skip(f"S3 недоступен: {e}")
 
-
-# ================================
-# Утилиты для тестов
-# ================================
 
 @pytest.fixture
 def assert_timing():
