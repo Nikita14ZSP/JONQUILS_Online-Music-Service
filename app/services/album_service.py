@@ -108,8 +108,7 @@ class AlbumService:
 
     async def get_popular_albums(self, limit: int = 20) -> List[Album]:
         """Получить популярные альбомы на основе количества треков и прослушиваний."""
-        # Простая реализация - по количеству треков
-        # В реальном приложении это будет основано на аналитике прослушиваний
+        
         query = (
             select(Album)
             .options(selectinload(Album.artist))
@@ -158,12 +157,12 @@ class AlbumService:
 
     async def get_album_stats(self, album_id: int) -> dict:
         """Получить статистику альбома."""
-        # Количество треков
+      
         tracks_query = select(func.count(Track.id)).where(Track.album_id == album_id)
         tracks_result = await self.db.execute(tracks_query)
         tracks_count = tracks_result.scalar()
 
-        # Общая длительность альбома
+ 
         duration_query = select(func.sum(Track.duration_ms)).where(Track.album_id == album_id)
         duration_result = await self.db.execute(duration_query)
         total_duration = duration_result.scalar() or 0
