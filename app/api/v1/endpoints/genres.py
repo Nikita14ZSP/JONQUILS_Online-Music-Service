@@ -17,7 +17,6 @@ async def create_genre(
     """Создать новый жанр"""
     genre_service = GenreService(db)
     
-    # Проверяем, что жанр с таким именем не существует
     existing_genre = await genre_service.get_by_name(genre_data.name)
     if existing_genre:
         raise HTTPException(
