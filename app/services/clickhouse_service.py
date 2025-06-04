@@ -22,7 +22,7 @@ class ClickHouseService:
     def _initialize_client(self):
         """Инициализация клиента ClickHouse"""
         try:
-            # Отладочная информация
+            
             print(f"🔍 Debug ClickHouse settings:")
             print(f"   HOST: {settings.CLICKHOUSE_HOST}")
             print(f"   PORT: {settings.CLICKHOUSE_PORT}")
@@ -30,7 +30,7 @@ class ClickHouseService:
             print(f"   PASSWORD: {settings.CLICKHOUSE_PASSWORD}")
             print(f"   DATABASE: {settings.CLICKHOUSE_DATABASE}")
             
-            # Используем настройки подключения к ClickHouse в Docker
+            
             self.client = Client(
                 host=settings.CLICKHOUSE_HOST,
                 port=settings.CLICKHOUSE_PORT,
@@ -38,8 +38,7 @@ class ClickHouseService:
                 password=settings.CLICKHOUSE_PASSWORD,
                 database=settings.CLICKHOUSE_DATABASE
             )
-            # Временно отключаем проверку соединения при инициализации
-            # self.client.execute('SELECT 1')
+            
             print(f"✅ ClickHouse client configured for {settings.CLICKHOUSE_HOST}:{settings.CLICKHOUSE_PORT} as {settings.CLICKHOUSE_USER}")
         except Exception as e:
             print(f"❌ Failed to configure ClickHouse client: {e}")
@@ -63,17 +62,17 @@ class ClickHouseService:
             return
         
         try:
-            # Проверяем подключение
+            
             await self.test_connection()
             print("✅ ClickHouse connection successful")
             
-            # Создаем базу данных если не существует
+            
             self.client.execute("CREATE DATABASE IF NOT EXISTS jonquils_analytics")
             
-            # Переключаемся на базу данных
+            
             self.client.execute("USE jonquils_analytics")
             
-            # Определяем DDL команды для создания таблиц
+            
             tables = [
                 """
                 CREATE TABLE IF NOT EXISTS api_requests_log (
@@ -159,7 +158,7 @@ class ClickHouseService:
                 """
             ]
             
-            # Создаем каждую таблицу
+            
             for i, table_ddl in enumerate(tables, 1):
                 try:
                     self.client.execute(table_ddl)
@@ -172,9 +171,8 @@ class ClickHouseService:
                 
         except Exception as e:
             print(f"❌ Failed to create ClickHouse tables: {e}")
-            # Не поднимаем исключение, чтобы приложение могло работать без ClickHouse
+            
     
-    # Методы для логирования API запросов
     async def log_api_request(self, 
                             method: str, 
                             endpoint: str, 
@@ -333,7 +331,7 @@ class ClickHouseService:
         except Exception as e:
             print(f"Failed to log user action: {e}")
     
-    # Методы для аналитики артистов
+    
     async def log_artist_action(self,
                                artist_id: int,
                                action: str,
@@ -344,11 +342,11 @@ class ClickHouseService:
             return
         
         try:
-            # Обрабатываем metadata как ключ-значение пары
+            
             metadata_key = ''
             metadata_value = ''
             if metadata:
-                # Берем первую пару ключ-значение из словаря
+                
                 first_key = next(iter(metadata.keys()), '')
                 metadata_key = first_key
                 metadata_value = metadata.get(first_key, '')
@@ -367,7 +365,7 @@ class ClickHouseService:
         except Exception as e:
             print(f"Failed to log artist action: {e}")
     
-    # Методы для получения аналитики
+    
     async def get_api_stats(self, days: int = 7) -> Dict[str, Any]:
         """Получение статистики API за последние дни"""
         if not self.client:
@@ -486,13 +484,13 @@ class ClickHouseService:
             return False
         
         try:
-            # Используем метод log_track_action для вставки данных
+            
             await self.log_track_action(
                 track_id=track_id,
-                artist_id=1,  # Тестовый артист
+                artist_id=1,  
                 action="play",
                 user_id=user_id,
-                duration_played_ms=played_duration * 1000,  # Конвертируем в миллисекунды
+                duration_played_ms=played_duration * 1000,  
                 platform="web",
                 device_type=device_type,
                 location=country
@@ -523,7 +521,7 @@ class ClickHouseService:
         except Exception as e:
             raise Exception(f"Failed to execute query: {e}")
     
-    # Методы для получения пользовательской аналитики
+    
     async def get_user_search_history(self, user_id: int, days: int = 30):
         """Получаем историю поисков пользователя"""
         if not self.client:
@@ -571,7 +569,7 @@ class ClickHouseService:
             return {}
         
         try:
-            # Статистика поиска
+          
             search_query = """
             SELECT 
                 count() as total_searches,
@@ -587,7 +585,7 @@ class ClickHouseService:
                 'days': days
             })
             
-            # Статистика прослушивания
+            
             track_query = """
             SELECT 
                 count() as total_plays,
@@ -813,8 +811,8 @@ class ClickHouseService:
                 track = {
                     "track_id": row[0],
                     "artist_id": row[1],
-                    "title": f"Track {row[0]}",  # Placeholder, will be replaced with actual data
-                    "artist_name": f"Artist {row[1]}",  # Placeholder, will be replaced with actual data
+                    "title": f"Track {row[0]}",  
+                    "artist_name": f"Artist {row[1]}",  
                     "play_count": row[2],
                     "total_duration_ms": row[3],
                     "avg_duration_ms": round(row[4], 0) if row[4] else 0,
