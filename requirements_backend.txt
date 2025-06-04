@@ -3,9 +3,6 @@ fastapi==0.115.6
 uvicorn[standard]==0.32.1
 pydantic[email]==2.10.4
 
-# ETL and Data Pipeline
-apache-airflow==3.0.1
-
 # Build tools
 setuptools>=69.0.0
 wheel>=0.42.0

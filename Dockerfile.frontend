@@ -31,9 +31,8 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # Копирование конфигурации nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Создание пользователя для nginx
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
+# Настройка прав доступа
+RUN chown -R nginx:nginx /usr/share/nginx/html
 
 # Открытие порта
 EXPOSE 80
@@ -42,5 +41,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost/ || exit 1
 
-# Команда запуска
+# Команда запуска (nginx запускается от root, но worker процессы от nginx)
 CMD ["nginx", "-g", "daemon off;"]
