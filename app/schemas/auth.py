@@ -22,8 +22,8 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     full_name: Optional[str] = None
-    role: str = "listener"  # Добавлено поле role
-    # Поля для артиста, если role == "artist"
+    role: str = "listener"  
+    
     artist_name: Optional[str] = None
     bio: Optional[str] = None
     country: Optional[str] = None
