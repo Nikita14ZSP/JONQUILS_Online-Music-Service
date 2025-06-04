@@ -42,9 +42,7 @@ async def create_track(
     """
     created_track = await track_service.create_track(track_data=track_in)
     
-    # Индексируем новый трек в Elasticsearch
     if created_track:
-        # Получаем полные детали для индексации
         full_track_details = await track_service.get_track_with_details(created_track.id)
         if full_track_details:
             await search_service.index_track(
@@ -72,9 +70,8 @@ async def upload_track_from_url(
     if not success:
         raise HTTPException(status_code=400, detail=message)
     
-    # Индексируем загруженный трек в Elasticsearch, если он успешно создан
     if track:
-        full_track_details = await track_service.get_track_with_details(track.id) # Получаем полные детали
+        full_track_details = await track_service.get_track_with_details(track.id) 
         if full_track_details:
             await search_service.index_track(
                 track=track,
@@ -142,7 +139,6 @@ async def update_track(
     if updated_track is None:
         raise HTTPException(status_code=404, detail="Track not found")
     
-    # Обновляем трек в Elasticsearch
     full_track_details = await track_service.get_track_with_details(updated_track.id)
     if full_track_details:
         await search_service.index_track(
@@ -167,7 +163,6 @@ async def delete_track(
     if not deleted:
         raise HTTPException(status_code=404, detail="Track not found")
     
-    # Удаляем трек из Elasticsearch
     await search_service.delete_entity(index="tracks", entity_id=track_id)
 
 @router.post("/{track_id}/listen", status_code=204, summary="Записать прослушивание трека")
