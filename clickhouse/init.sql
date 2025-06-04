@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS track_analytics (
     track_id UInt64,
     artist_id UInt64,
     user_id Nullable(UInt64),
-    action String, -- 'play', 'pause', 'skip', 'like', 'download'
+    action String, -- ('play', 'pause', 'skip', 'like', 'download')
     duration_played_ms Nullable(UInt32),
     track_position_ms Nullable(UInt32),
     platform String DEFAULT 'web',
@@ -51,9 +51,9 @@ CREATE TABLE IF NOT EXISTS search_analytics (
     user_id Nullable(UInt64),
     query String,
     results_count UInt32,
-    search_type String, -- 'tracks', 'artists', 'albums', 'all'
+    search_type String, -- ('tracks', 'artists', 'albums', 'all')
     clicked_result_id Nullable(UInt64),
-    clicked_result_type Nullable(String), -- 'track', 'artist', 'album'
+    clicked_result_type Nullable(String), -- ('track', 'artist', 'album')
     session_id Nullable(String),
     date Date DEFAULT toDate(timestamp)
 ) ENGINE = MergeTree()
@@ -65,7 +65,7 @@ TTL date + INTERVAL 1 YEAR;
 CREATE TABLE IF NOT EXISTS user_analytics (
     timestamp DateTime DEFAULT now(),
     user_id UInt64,
-    action String, -- 'login', 'logout', 'register', 'profile_update'
+    action String, -- ('login', 'logout', 'register', 'profile_update')
     session_duration_minutes Nullable(UInt32),
     pages_visited UInt32 DEFAULT 1,
     tracks_played UInt32 DEFAULT 0,
@@ -81,16 +81,14 @@ TTL date + INTERVAL 2 YEARS;
 CREATE TABLE IF NOT EXISTS artist_analytics (
     timestamp DateTime DEFAULT now(),
     artist_id UInt64,
-    action String, -- 'track_upload', 'album_create', 'profile_update', 'track_delete'
-    target_id Nullable(UInt64), -- ID трека/альбома при соответствующих действиях
+    action String, -- ('track_upload', 'album_create', 'profile_update', 'track_delete')
+    target_id Nullable(UInt64), 
     metadata Map(String, String),
     date Date DEFAULT toDate(timestamp)
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(date)
 ORDER BY (timestamp, artist_id)
 TTL date + INTERVAL 2 YEARS;
-
--- Материализованные представления для агрегации данных
 
 -- Ежедневная статистика по эндпоинтам
 CREATE MATERIALIZED VIEW IF NOT EXISTS daily_endpoint_stats
