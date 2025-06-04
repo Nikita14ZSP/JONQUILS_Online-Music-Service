@@ -47,7 +47,7 @@ class AnalyticsService:
             if session_id is None:
                 session_id = str(uuid.uuid4())
             
-            # Получаем дополнительную информацию о треке для ClickHouse
+           
             track_query = (
                 select(Track, Artist.id.label("artist_id"), Album.id.label("album_id"), Genre.id.label("genre_id"))
                 .outerjoin(Artist, Track.artist_id == Artist.id)
@@ -64,7 +64,7 @@ class AnalyticsService:
             
             track, artist_id, album_id, genre_id = track_data
             
-            # Сохраняем в PostgreSQL для реляционных запросов
+            
             db_event = ListeningHistory(
                 user_id=user_id,
                 track_id=track_id,
@@ -77,7 +77,7 @@ class AnalyticsService:
             self.db.add(db_event)
             await self.db.commit()
             
-            # Сохраняем в ClickHouse для быстрой аналитики
+            
             clickhouse_event = {
                 'event_id': str(uuid.uuid4()),
                 'user_id': user_id,
@@ -93,11 +93,11 @@ class AnalyticsService:
                 'session_id': session_id,
                 'ip_address': ip_address or '',
                 'user_agent': user_agent or '',
-                'country': '',  # Можно добавить геолокацию
+                'country': '',  
                 'city': ''
             }
             
-            # Асинхронно записываем в ClickHouse
+            
             await self.clickhouse.insert_listening_event(clickhouse_event)
             
             return True
@@ -141,7 +141,7 @@ class AnalyticsService:
     async def get_track_analytics(self, track_id: int, days: int = 30) -> Optional[TrackAnalytics]:
         """Получение аналитики по треку из ClickHouse"""
         try:
-            # Получаем информацию о треке из PostgreSQL
+           
             track_query = (
                 select(Track, Artist.name.label("artist_name"))
                 .join(Artist, Track.artist_id == Artist.id)
@@ -155,7 +155,7 @@ class AnalyticsService:
             
             track, artist_name = track_row
             
-            # Получаем аналитику из ClickHouse
+          
             analytics_data = await self.clickhouse.get_track_analytics(track_id, days)
             
             if not analytics_data:
@@ -180,27 +180,27 @@ class AnalyticsService:
     async def get_user_analytics(self, user_id: int, period: str = "week") -> Optional[UserAnalytics]:
         """Получение аналитики по пользователю из ClickHouse"""
         try:
-            # Преобразуем период в количество дней
+           
             days_map = {
                 "day": 1,
                 "week": 7,
                 "month": 30,
                 "year": 365,
-                "all": 365 * 10 # Или другое большое число для "все время"
+                "all": 365 * 10 
             }
             days = days_map.get(period, 7)
 
-            # Получаем аналитику из ClickHouse
+            
             analytics_data = await self.clickhouse.get_user_analytics(user_id, days)
             
             if not analytics_data:
                 return None
             
-            # Получаем топ исполнителей с именами из PostgreSQL
+            
             top_artists_data = analytics_data.get('top_artists', [])
             favorite_artists = []
             
-            for artist_data in top_artists_data[:5]:  # Топ 5
+            for artist_data in top_artists_data[:5]:  
                 artist_query = select(Artist.name).where(Artist.id == artist_data['artist_id'])
                 artist_result = await self.db.execute(artist_query)
                 artist_name = artist_result.scalar()
@@ -211,7 +211,7 @@ class AnalyticsService:
                 user_id=user_id,
                 total_listening_time_ms=analytics_data.get('total_listening_time', 0),
                 total_tracks_played=analytics_data.get('unique_tracks', 0),
-                favorite_genres=[],  # Можно добавить позже
+                favorite_genres=[],  
                 favorite_artists=favorite_artists,
                 listening_patterns={},
                 activity_by_hour=analytics_data.get('activity_by_hour', {})
@@ -224,13 +224,13 @@ class AnalyticsService:
     async def get_top_tracks(self, limit: int = 50, days: int = 30) -> List[TrackAnalytics]:
         """Получение топ треков из ClickHouse"""
         try:
-            # Получаем топ треки из ClickHouse
+            
             top_tracks_data = await self.clickhouse.get_top_tracks(limit, days)
             
             track_analytics = []
             
             for track_data in top_tracks_data:
-                # Получаем информацию о треке из PostgreSQL
+               
                 track_query = (
                     select(Track, Artist.name.label("artist_name"))
                     .join(Artist, Track.artist_id == Artist.id)
@@ -262,7 +262,7 @@ class AnalyticsService:
     async def get_platform_analytics(self, days: int = 30) -> PlatformAnalytics:
         """Получение общей аналитики платформы из ClickHouse"""
         try:
-            # Получаем общие метрики из PostgreSQL
+            
             total_users_query = select(func.count(User.id))
             total_users_result = await self.db.execute(total_users_query)
             total_users = total_users_result.scalar() or 0
@@ -275,15 +275,15 @@ class AnalyticsService:
             total_artists_result = await self.db.execute(total_artists_query)
             total_artists = total_artists_result.scalar() or 0
             
-            # Получаем активность из ClickHouse
+            
             platform_data = await self.clickhouse.get_platform_analytics(days)
             
-            # Получаем топ треки
+           
             top_tracks = await self.get_top_tracks(10, days)
             
             return PlatformAnalytics(
                 total_users=total_users,
-                active_users_today=0,  # Можно вычислить из daily_activity
+                active_users_today=0,  
                 active_users_week=0,
                 active_users_month=platform_data.get('active_users', 0),
                 total_plays_today=0,
