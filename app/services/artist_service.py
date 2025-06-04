@@ -101,8 +101,7 @@ class ArtistService:
 
     async def get_popular_artists(self, limit: int = 20) -> List[Artist]:
         """Получить популярных исполнителей на основе количества прослушиваний их треков."""
-        # Сначала простая реализация - по количеству треков
-        # В реальном приложении это будет основано на аналитике прослушиваний
+       
         query = (
             select(Artist)
             .join(Track)
@@ -128,12 +127,12 @@ class ArtistService:
 
     async def get_artist_stats(self, artist_id: int) -> dict:
         """Получить статистику исполнителя."""
-        # Количество треков
+        
         tracks_query = select(func.count(Track.id)).where(Track.artist_id == artist_id)
         tracks_result = await self.db.execute(tracks_query)
         tracks_count = tracks_result.scalar()
 
-        # Количество альбомов
+       
         albums_query = select(func.count(Album.id)).where(Album.artist_id == artist_id)
         albums_result = await self.db.execute(albums_query)
         albums_count = albums_result.scalar()
