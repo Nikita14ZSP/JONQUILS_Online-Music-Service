@@ -15,21 +15,21 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     is_premium = Column(Boolean, default=False)
-    role = Column(String(50), default="listener", nullable=False)  # Добавлено поле role
+    role = Column(String(50), default="listener", nullable=False)  
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Связи
+    
     playlists = relationship("Playlist", back_populates="user")
     listening_history = relationship("ListeningHistory", back_populates="user")
     user_preferences = relationship("UserPreference", back_populates="user")
-    artist_profile = relationship("Artist", back_populates="user", uselist=False) # Связь с профилем артиста
+    artist_profile = relationship("Artist", back_populates="user", uselist=False) 
 
 class Artist(Base):
     __tablename__ = "artists"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=True, index=True) # Связь с User
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=True, index=True) 
     name = Column(String(255), nullable=False, index=True)
     bio = Column(Text)
     country = Column(String(100))
@@ -37,8 +37,8 @@ class Artist(Base):
     spotify_id = Column(String(100), unique=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Связи
-    user = relationship("User", back_populates="artist_profile") # Обратная связь с User
+    
+    user = relationship("User", back_populates="artist_profile") 
     albums = relationship("Album", back_populates="artist")
     tracks = relationship("Track", back_populates="artist")
 
@@ -53,7 +53,7 @@ class Album(Base):
     spotify_id = Column(String(100), unique=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Связи
+    
     artist = relationship("Artist", back_populates="albums")
     tracks = relationship("Track", back_populates="album")
 
@@ -64,7 +64,7 @@ class Genre(Base):
     name = Column(String(100), unique=True, nullable=False, index=True)
     description = Column(Text)
     
-    # Связи
+    
     tracks = relationship("Track", back_populates="genre")
 
 class Track(Base):
@@ -75,20 +75,20 @@ class Track(Base):
     artist_id = Column(Integer, ForeignKey("artists.id"), nullable=False)
     album_id = Column(Integer, ForeignKey("albums.id"))
     genre_id = Column(Integer, ForeignKey("genres.id"))
-    duration_ms = Column(Integer)  # Длительность в миллисекундах
-    file_path = Column(String(500))  # Путь к аудиофайлу
-    file_url = Column(String(500))   # URL для стриминга
+    duration_ms = Column(Integer)  
+    file_path = Column(String(500))  
+    file_url = Column(String(500))   
     spotify_id = Column(String(100), unique=True)
-    preview_url = Column(String(500))  # URL превью
+    preview_url = Column(String(500))  
     explicit = Column(Boolean, default=False)
-    popularity = Column(Integer, default=0)  # Рейтинг популярности 0-100
-    tempo = Column(Float)  # BPM
-    energy = Column(Float)  # Энергетика трека 0.0-1.0
-    valence = Column(Float)  # Позитивность 0.0-1.0
-    danceability = Column(Float)  # Танцевальность 0.0-1.0
+    popularity = Column(Integer, default=0)  
+    tempo = Column(Float)  
+    energy = Column(Float)  
+    valence = Column(Float)  
+    danceability = Column(Float)  
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Связи
+    
     artist = relationship("Artist", back_populates="tracks")
     album = relationship("Album", back_populates="tracks")
     genre = relationship("Genre", back_populates="tracks")
@@ -107,7 +107,7 @@ class Playlist(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Связи
+    
     user = relationship("User", back_populates="playlists")
     tracks = relationship("PlaylistTrack", back_populates="playlist")
 
@@ -117,10 +117,10 @@ class PlaylistTrack(Base):
     id = Column(Integer, primary_key=True, index=True)
     playlist_id = Column(Integer, ForeignKey("playlists.id"), nullable=False)
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
-    position = Column(Integer, nullable=False)  # Позиция в плейлисте
+    position = Column(Integer, nullable=False)  
     added_at = Column(DateTime, default=datetime.utcnow)
     
-    # Связи
+    
     playlist = relationship("Playlist", back_populates="tracks")
     track = relationship("Track", back_populates="playlist_tracks")
 
@@ -132,12 +132,12 @@ class ListeningHistory(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
     played_at = Column(DateTime, default=datetime.utcnow, index=True)
-    play_duration_ms = Column(Integer)  # Сколько миллисекунд было прослушано
-    completion_percentage = Column(Float)  # Процент прослушивания
-    source = Column(String(50))  # Источник: search, playlist, recommendation, etc.
-    device_type = Column(String(50))  # web, mobile, desktop
+    play_duration_ms = Column(Integer)  
+    completion_percentage = Column(Float)  
+    source = Column(String(50))  
+    device_type = Column(String(50))  
     
-    # Связи
+    
     user = relationship("User", back_populates="listening_history")
     track = relationship("Track", back_populates="listening_history")
 
@@ -149,9 +149,9 @@ class UserPreference(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     genre_id = Column(Integer, ForeignKey("genres.id"))
     artist_id = Column(Integer, ForeignKey("artists.id"))
-    preference_score = Column(Float)  # Скор предпочтения 0.0-1.0
+    preference_score = Column(Float)  
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Связи
+    
     user = relationship("User", back_populates="user_preferences")
