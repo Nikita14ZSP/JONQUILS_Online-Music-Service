@@ -6,7 +6,7 @@ from app.services.auth_service import AuthService
 from app.db.database import get_db
 from app.db.models import User
 
-# Настройка HTTP Bearer для токенов
+
 security = HTTPBearer()
 
 
