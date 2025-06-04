@@ -1,7 +1,3 @@
-"""
-Эндпоинты для аналитики - полная интеграция с ClickHouse
-"""
-
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import time
@@ -18,13 +14,10 @@ router = APIRouter()
 async def record_listening_event(
     event: ListeningEvent = Body(...)
 ):
-    """
-    Записать событие прослушивания трека в ClickHouse.
-    """
     try:
         await clickhouse_service.log_track_action(
             track_id=event.track_id,
-            artist_id=event.artist_id or 1,  # Default artist if not provided
+            artist_id=event.artist_id or 1,  
             action="play",
             user_id=event.user_id,
             duration_played_ms=event.play_duration_ms,
@@ -40,15 +33,10 @@ async def get_popular_tracks_analytics(
     period: str = Query(default="week", regex="^(day|week|month|year)$"),
     limit: int = Query(default=20, ge=1, le=100)
 ):
-    """
-    Получить популярные треки за период из ClickHouse.
-    """
     try:
-        # Преобразуем период в дни
         period_days = {"day": 1, "week": 7, "month": 30, "year": 365}
         days = period_days.get(period, 7)
         
-        # Получаем популярные треки из ClickHouse
         query = """
         SELECT 
             track_id,
@@ -71,8 +59,8 @@ async def get_popular_tracks_analytics(
             tracks.append({
                 "track_id": row[0],
                 "artist_id": row[1],
-                "title": f"Track {row[0]}",  # Placeholder
-                "artist_name": f"Artist {row[1]}",  # Placeholder
+                "title": f"Track {row[0]}",  
+                "artist_name": f"Artist {row[1]}",  
                 "play_count": row[2],
                 "unique_listeners": row[3],
                 "total_duration_ms": row[4]
@@ -87,9 +75,6 @@ async def get_popular_artists_analytics(
     period: str = Query(default="week", regex="^(day|week|month|year)$"),
     limit: int = Query(default=20, ge=1, le=100)
 ):
-    """
-    Получить популярных исполнителей за период из ClickHouse.
-    """
     try:
         period_days = {"day": 1, "week": 7, "month": 30, "year": 365}
         days = period_days.get(period, 7)
@@ -114,7 +99,7 @@ async def get_popular_artists_analytics(
         for row in result:
             artists.append({
                 "artist_id": row[0],
-                "artist_name": f"Artist {row[0]}",  # Placeholder
+                "artist_name": f"Artist {row[0]}",  
                 "total_plays": row[1],
                 "unique_listeners": row[2],
                 "unique_tracks": row[3]
@@ -129,17 +114,11 @@ async def get_user_analytics_stats(
     user_id: int = Path(..., title="ID пользователя", ge=1),
     period: str = Query(default="week", regex="^(day|week|month|year)$")
 ):
-    """
-    Получить статистику прослушиваний пользователя из ClickHouse.
-    """
     try:
-        # Получаем статистику прослушиваний
         listening_stats = await clickhouse_service.get_user_listening_stats(user_id, period)
         
-        # Получаем статистику поисков
         search_stats = await clickhouse_service.get_user_search_stats(user_id, period)
         
-        # Получаем топ треки
         top_tracks = await clickhouse_service.get_user_top_tracks(user_id, period, 5)
         
         stats = {
@@ -162,11 +141,7 @@ async def get_user_listening_history_analytics(
     from_date: Optional[datetime] = Query(None, description="Начальная дата"),
     to_date: Optional[datetime] = Query(None, description="Конечная дата")
 ):
-    """
-    Получить историю прослушиваний пользователя из ClickHouse.
-    """
     try:
-        # Базовый запрос
         conditions = ["user_id = {}".format(user_id), "action = 'play'"]
         
         if from_date:
@@ -197,8 +172,8 @@ async def get_user_listening_history_analytics(
             history.append({
                 "track_id": row[0],
                 "artist_id": row[1],
-                "track_title": f"Track {row[0]}",  # Placeholder
-                "artist_name": f"Artist {row[1]}",  # Placeholder
+                "track_title": f"Track {row[0]}",  
+                "artist_name": f"Artist {row[1]}",
                 "played_at": row[2].isoformat(),
                 "play_duration_ms": row[3],
                 "platform": row[4],
@@ -217,15 +192,10 @@ async def get_user_listening_history_analytics(
 async def get_genre_stats(
     period: str = Query(default="month", regex="^(day|week|month|year)$")
 ):
-    """
-    Получить статистику прослушиваний по жанрам из ClickHouse.
-    """
     try:
         period_days = {"day": 1, "week": 7, "month": 30, "year": 365}
         days = period_days.get(period, 30)
         
-        # Поскольку у нас нет данных о жанрах в ClickHouse, возвращаем примерную статистику
-        # В реальной системе здесь был бы JOIN с таблицей жанров
         query = """
         SELECT 
             'Electronic' as genre,
@@ -283,14 +253,10 @@ async def get_genre_stats(
 async def get_music_trends(
     period: str = Query(default="week", regex="^(day|week|month|year)$")
 ):
-    """
-    Получить музыкальные тренды и аналитику из ClickHouse.
-    """
     try:
         period_days = {"day": 1, "week": 7, "month": 30, "year": 365}
         days = period_days.get(period, 7)
         
-        # Получаем тренды по трекам
         trending_query = """
         SELECT 
             track_id,
@@ -308,7 +274,6 @@ async def get_music_trends(
         
         trending_result = await clickhouse_service.execute_query(trending_query)
         
-        # Получаем рост популярности
         growth_query = """
         WITH recent AS (
             SELECT track_id, count() as recent_plays
@@ -369,11 +334,7 @@ async def get_music_trends(
 
 @router.get("/dashboard", summary="Дашборд аналитики")
 async def get_analytics_dashboard():
-    """
-    Получить общую аналитику для дашборда из ClickHouse.
-    """
     try:
-        # Общая статистика за последние 30 дней
         total_query = """
         SELECT 
             count() as total_plays,
@@ -388,7 +349,6 @@ async def get_analytics_dashboard():
         total_result = await clickhouse_service.execute_query(total_query)
         total_stats = total_result[0] if total_result else (0, 0, 0, 0)
         
-        # Активность по дням
         daily_query = """
         SELECT 
             toDate(timestamp) as date,
@@ -403,7 +363,6 @@ async def get_analytics_dashboard():
         
         daily_result = await clickhouse_service.execute_query(daily_query)
         
-        # Топ платформы
         platform_query = """
         SELECT 
             platform,
@@ -452,11 +411,7 @@ async def get_similar_users(
     user_id: int = Path(..., title="ID пользователя", ge=1),
     limit: int = Query(default=10, ge=1, le=50)
 ):
-    """
-    Найти пользователей с похожими музыкальными предпочтениями через ClickHouse.
-    """
     try:
-        # Получаем топ треки пользователя
         user_tracks_query = """
         SELECT track_id, count() as play_count
         FROM track_analytics 
@@ -473,11 +428,9 @@ async def get_similar_users(
         if not user_tracks_result:
             return {"user_id": user_id, "similar_users": []}
         
-        # Получаем топ треки пользователя как список
         top_track_ids = [str(row[0]) for row in user_tracks_result]
         track_ids_str = ",".join(top_track_ids)
         
-        # Найдем пользователей, которые слушают те же треки
         similar_query = f"""
         SELECT 
             user_id as similar_user_id,
@@ -510,17 +463,11 @@ async def get_similar_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get similar users: {str(e)}")
 
-# Новые эндпоинты для расширенной ClickHouse-аналитики
-
 @router.get("/realtime/platform-stats", summary="Статистика платформы в реальном времени")
 async def get_realtime_platform_stats():
-    """
-    Получить статистику платформы в реальном времени из ClickHouse.
-    """
     try:
         stats = await clickhouse_service.get_api_stats(days=1)
         
-        # Дополнительная статистика платформы
         platform_query = """
         SELECT 
             count() as total_actions,
@@ -554,9 +501,6 @@ async def get_realtime_platform_stats():
 async def get_realtime_active_users(
     minutes: int = Query(default=60, ge=1, le=1440, description="Период в минутах")
 ):
-    """
-    Получить количество активных пользователей за последние N минут.
-    """
     try:
         query = """
         SELECT 
@@ -589,17 +533,12 @@ async def get_advanced_track_analytics(
     track_id: int = Path(..., title="ID трека", ge=1),
     period: str = Query(default="week", regex="^(day|week|month|year)$")
 ):
-    """
-    Получить расширенную аналитику трека из ClickHouse.
-    """
     try:
-        # Используем метод из ClickHouse сервиса
         period_days = {"day": 1, "week": 7, "month": 30, "year": 365}
         days = period_days.get(period, 7)
         
         stats = await clickhouse_service.get_track_stats(track_id, days)
         
-        # Дополнительная аналитика по времени
         hourly_query = """
         SELECT 
             toHour(timestamp) as hour,
@@ -634,18 +573,12 @@ async def get_advanced_user_analytics(
     user_id: int = Path(..., title="ID пользователя", ge=1),
     period: str = Query(default="week", regex="^(day|week|month|year)$")
 ):
-    """
-    Получить расширенную аналитику пользователя из ClickHouse.
-    """
     try:
-        # Получаем общую статистику активности
         activity_stats = await clickhouse_service.get_user_activity_stats(user_id, 
                                                                         clickhouse_service._get_days_for_period(period))
         
-        # Получаем топ треки
         top_tracks = await clickhouse_service.get_user_top_tracks(user_id, period, 10)
         
-        # Получаем временную линию
         timeline = await clickhouse_service.get_user_activity_timeline(user_id, 
                                                                      clickhouse_service._get_days_for_period(period))
         
@@ -668,9 +601,6 @@ async def record_search_event(
     clicked_result_id: Optional[int] = Body(default=None),
     clicked_result_type: Optional[str] = Body(default=None)
 ):
-    """
-    Записать событие поиска пользователя в ClickHouse.
-    """
     try:
         await clickhouse_service.log_search_action(
             query=query,
@@ -691,22 +621,17 @@ async def record_playlist_event(
     action: str = Body(..., regex="^(create|update|delete|add_track|remove_track)$"),
     track_id: Optional[int] = Body(default=None)
 ):
-    """
-    Записать событие действия с плейлистом в ClickHouse.
-    """
     try:
-        # Логируем как пользовательское действие
         await clickhouse_service.log_user_action(
             user_id=user_id,
             action=f"playlist_{action}",
             tracks_played=1 if action == "add_track" else 0
         )
         
-        # Если добавляется трек, логируем это как действие с треком
         if action == "add_track" and track_id:
             await clickhouse_service.log_track_action(
                 track_id=track_id,
-                artist_id=1,  # Default artist
+                artist_id=1, 
                 action="add_to_playlist",
                 user_id=user_id
             )
@@ -717,18 +642,13 @@ async def record_playlist_event(
 
 @router.get("/performance/summary", summary="Сводка производительности аналитики")
 async def get_performance_summary():
-    """
-    Получить сводку производительности ClickHouse аналитики.
-    """
     try:
         import time
         
         results = {}
         
-        # Тест скорости запросов ClickHouse
         start_time = time.time()
         
-        # Тест популярных треков
         popular_tracks_query = """
         SELECT 
             track_id,
@@ -744,7 +664,6 @@ async def get_performance_summary():
         popular_result = await clickhouse_service.execute_query(popular_tracks_query)
         popular_time = time.time() - start_time
         
-        # Тест активных пользователей
         start_time = time.time()
         active_users_query = """
         SELECT uniq(user_id) as active_users
@@ -755,7 +674,6 @@ async def get_performance_summary():
         active_result = await clickhouse_service.execute_query(active_users_query)
         active_time = time.time() - start_time
         
-        # Тест сложного аналитического запроса
         start_time = time.time()
         complex_query = """
         SELECT 
@@ -805,15 +723,10 @@ async def get_performance_summary():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get performance summary: {str(e)}")
 
-# ClickHouse аналитика - новые эндпоинты
-
 @router.get("/clickhouse/api-stats", summary="Статистика API запросов (ClickHouse)")
 async def get_clickhouse_api_stats(
     days: int = Query(7, ge=1, le=90, description="Количество дней для анализа")
 ):
-    """
-    Получение статистики API запросов за указанное количество дней из ClickHouse.
-    """
     try:
         stats = await clickhouse_service.get_api_stats(days=days)
         return {
@@ -830,9 +743,6 @@ async def get_clickhouse_track_stats(
     track_id: int,
     days: int = Query(30, ge=1, le=365, description="Количество дней для анализа")
 ):
-    """
-    Получение статистики для конкретного трека из ClickHouse.
-    """
     try:
         stats = await clickhouse_service.get_track_stats(track_id=track_id, days=days)
         return {
@@ -849,9 +759,6 @@ async def get_clickhouse_track_stats(
 async def get_clickhouse_artist_stats(
     artist_id: int
 ):
-    """
-    Получение статистики для артиста из ClickHouse.
-    """
     try:
         stats = await clickhouse_service.get_artist_stats(artist_id=artist_id)
         return {
@@ -869,12 +776,9 @@ async def log_clickhouse_track_play(
     duration_ms: Optional[int] = Body(None),
     position_ms: Optional[int] = Body(None),
     platform: str = Body("web"),
-    artist_id: int = Body(1),  # Временно фиксированное значение
+    artist_id: int = Body(1),  
     user_id: Optional[int] = Body(None)
 ):
-    """
-    Логирование воспроизведения трека в ClickHouse.
-    """
     try:
         await clickhouse_service.log_track_action(
             track_id=track_id,
@@ -899,9 +803,6 @@ async def log_clickhouse_search(
     clicked_result_type: Optional[str] = Body(None),
     user_id: Optional[int] = Body(None)
 ):
-    """
-    Логирование поискового запроса в ClickHouse.
-    """
     try:
         await clickhouse_service.log_search_action(
             query=query,
@@ -918,9 +819,6 @@ async def log_clickhouse_search(
 
 @router.get("/clickhouse/health", summary="Проверка состояния ClickHouse")
 async def clickhouse_health_check():
-    """
-    Проверка работоспособности системы аналитики ClickHouse.
-    """
     try:
         is_connected = await clickhouse_service.test_connection()
         return {
@@ -940,26 +838,15 @@ async def get_user_analytics(
     current_user: User = Depends(get_current_user),
     days: int = Query(default=30, ge=1, le=365, description="Количество дней для анализа")
 ):
-    """
-    Получить аналитику активности текущего пользователя:
-    - История поисков
-    - Топ треков по прослушиваниям
-    - Активность по времени
-    - Статистика использования
-    """
     try:
         user_id = current_user.id
         
-        # Получаем историю поисков
         search_history = await clickhouse_service.get_user_search_history(user_id, days)
         
-        # Получаем топ треков пользователя
         top_tracks = await clickhouse_service.get_user_top_tracks(user_id, days)
         
-        # Получаем статистику активности
         activity_stats = await clickhouse_service.get_user_activity_stats(user_id, days)
         
-        # Получаем активность по времени
         activity_timeline = await clickhouse_service.get_user_activity_timeline(user_id, days)
         
         return {
@@ -978,9 +865,6 @@ async def get_user_search_history(
     current_user: User = Depends(get_current_user),
     limit: int = Query(default=50, ge=1, le=200, description="Количество записей")
 ):
-    """
-    Получить последние поисковые запросы пользователя.
-    """
     try:
         user_id = current_user.id
         search_history = await clickhouse_service.get_user_search_history(user_id, limit=limit)
@@ -998,23 +882,13 @@ async def get_user_analytics_by_id(
     period: str = Query(default="30d", regex="^(7d|30d|90d)$", description="Период: 7d, 30d, 90d"),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Получить аналитику активности пользователя по ID:
-    - История поисков
-    - Топ треков по прослушиваниям  
-    - Активность по времени
-    - Статистика использования
-    """
     try:
-        # Проверяем, что пользователь запрашивает свою аналитику или является администратором
         if current_user.id != user_id and current_user.role != 'admin':
             raise HTTPException(status_code=403, detail="Доступ запрещен")
         
-        # Конвертируем период в дни
         days_map = {'7d': 7, '30d': 30, '90d': 90}
         days = days_map.get(period, 30)
         
-        # Получаем статистику поисков
         search_history = await clickhouse_service.get_user_search_history(user_id, days)
         search_count = len(search_history)
         unique_queries = len(set(item['search_query'] for item in search_history))
@@ -1022,26 +896,21 @@ async def get_user_analytics_by_id(
         click_through_rate = clicked_searches / search_count if search_count > 0 else 0
         avg_results = sum(item['results_count'] for item in search_history) / search_count if search_count > 0 else 0
         
-        # Получаем топ треки пользователя
         top_tracks_data = await clickhouse_service.get_user_top_tracks(user_id, days)
         
-        # Получаем общую статистику прослушиваний
         listening_data = await clickhouse_service.get_user_listening_stats(user_id, days)
         total_plays = listening_data.get('total_plays', 0)
         total_duration = listening_data.get('total_duration_sec', 0)
         unique_tracks = listening_data.get('unique_tracks', 0)
         avg_session_length = listening_data.get('avg_session_length_sec', 0)
         
-        # Получаем активность по дням (последние 30 дней)
         activity_timeline = await clickhouse_service.get_user_activity_timeline(user_id, min(days, 30))
         
-        # Подсчитываем общую активность
         active_days = len([day for day in activity_timeline if day.get('search_count', 0) + day.get('listening_count', 0) > 0])
         total_sessions = sum(day.get('session_count', 1) for day in activity_timeline)
         total_activity = search_count + total_plays
         avg_daily_activity = total_activity / days if days > 0 else 0
         
-        # Формируем топ треки с дополнительной информацией
         formatted_top_tracks = []
         max_plays = max([track.get('play_count', 0) for track in top_tracks_data]) if top_tracks_data else 1
         
@@ -1055,9 +924,8 @@ async def get_user_analytics_by_id(
                 'percentage': (track.get('play_count', 0) / max_plays * 100) if max_plays > 0 else 0
             })
         
-        # Формируем историю поисков
         formatted_search_history = []
-        for search in search_history[-10:]:  # Последние 10 поисков
+        for search in search_history[-10:]:  
             formatted_search_history.append({
                 'query': search.get('search_query', ''),
                 'timestamp': search.get('timestamp', ''),
@@ -1065,7 +933,6 @@ async def get_user_analytics_by_id(
                 'clicked': bool(search.get('clicked_result_id'))
             })
         
-        # Формируем временную линию активности
         formatted_timeline = []
         for day in activity_timeline:
             formatted_timeline.append({
