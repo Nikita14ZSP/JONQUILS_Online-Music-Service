@@ -21,7 +21,7 @@ class SpotifyService:
         if not self.client_id or not self.client_secret:
             return None
         
-        # Кодируем client_id и client_secret в base64
+        
         auth_string = f"{self.client_id}:{self.client_secret}"
         auth_bytes = auth_string.encode("ascii")
         auth_base64 = base64.b64encode(auth_bytes).decode("ascii")
@@ -72,7 +72,7 @@ class SpotifyService:
         if not self.access_token:
             return []
         
-        # Формируем поисковый запрос
+      
         search_query = f"track:{query}"
         if artist:
             search_query += f" artist:{artist}"
@@ -99,7 +99,7 @@ class SpotifyService:
                 data = response.json()
                 tracks = data.get("tracks", {}).get("items", [])
                 
-                # Форматируем результаты
+                
                 formatted_tracks = []
                 for track in tracks:
                     formatted_track = {
@@ -206,5 +206,5 @@ class SpotifyService:
             return None
 
 
-# Singleton instance
+
 spotify_service = SpotifyService()
