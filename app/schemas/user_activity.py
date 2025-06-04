@@ -48,7 +48,7 @@ class UserAnalytics(BaseModel):
     total_tracks_played: int = 0
     favorite_genres: list[str] = []
     favorite_artists: list[str] = []
-    listening_patterns: Dict[str, Any] = {}  # паттерны прослушивания
+    listening_patterns: Dict[str, Any] = {}  
     activity_by_hour: Dict[int, int] = {}
 
 class PlatformAnalytics(BaseModel):
