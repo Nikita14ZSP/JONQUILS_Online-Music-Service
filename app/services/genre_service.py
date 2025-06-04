@@ -69,17 +69,15 @@ class GenreService:
         if not genre:
             return None
 
-        # Подсчитываем количество треков в жанре
         track_count_result = await self.db.execute(
             select(func.count(Track.id)).filter(Track.genre_id == genre_id)
         )
         track_count = track_count_result.scalar() or 0
 
-        # Создаем объект со статистикой
         return GenreWithStats(
             id=genre.id,
             name=genre.name,
             description=genre.description,
             track_count=track_count,
-            total_plays=0  # Пока оставляем 0, можно добавить подсчет из ListeningHistory
+            total_plays=0  
         )
