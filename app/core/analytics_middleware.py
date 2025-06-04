@@ -1,7 +1,3 @@
-"""
-Middleware для логирования API запросов в ClickHouse
-"""
-
 import time
 import asyncio
 from typing import Callable
@@ -15,22 +11,22 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
     """Middleware для сбора аналитики API запросов"""
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Засекаем время начала запроса
+        
         start_time = time.time()
         
-        # Получаем информацию о запросе
+        
         method = request.method
         endpoint = str(request.url.path)
         user_agent = request.headers.get("user-agent", "")
         ip_address = request.client.host if request.client else ""
         
-        # Получаем информацию о пользователе из токена (если есть)
+
         user_id = None
         artist_id = None
         session_id = None
         
         try:
-            # Попытаемся извлечь user_id из токена если middleware для auth уже сработал
+           
             if hasattr(request.state, 'user_id'):
                 user_id = request.state.user_id
             if hasattr(request.state, 'artist_id'):
@@ -40,7 +36,7 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
         except:
             pass
         
-        # Получаем размер запроса
+   
         request_size = None
         if request.headers.get("content-length"):
             try:
@@ -48,14 +44,14 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
             except:
                 pass
         
-        # Выполняем запрос
+        
         response = await call_next(request)
         
-        # Вычисляем время выполнения
+    
         process_time = time.time() - start_time
         response_time_ms = int(process_time * 1000)
         
-        # Получаем размер ответа
+    
         response_size = None
         if hasattr(response, 'headers') and response.headers.get("content-length"):
             try:
@@ -63,12 +59,12 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
             except:
                 pass
         
-        # Определяем, была ли ошибка
+        
         error_message = None
         if response.status_code >= 400:
             error_message = f"HTTP {response.status_code}"
         
-        # Логируем в ClickHouse асинхронно (не блокируем ответ)
+        
         asyncio.create_task(
             clickhouse_service.log_api_request(
                 method=method,
@@ -86,7 +82,7 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
             )
         )
         
-        # Добавляем заголовок с временем обработки
+        
         response.headers["X-Process-Time"] = str(process_time)
         
         return response
