@@ -92,7 +92,7 @@ class TrackService:
     
     async def search_tracks(self, search_query: TrackSearchQuery) -> tuple[List[TrackWithDetails], int]:
         """Поиск треков с фильтрацией"""
-        # Базовый запрос с джойнами
+       
         base_query = (
             select(
                 Track,
@@ -107,10 +107,10 @@ class TrackService:
             .outerjoin(Genre, Track.genre_id == Genre.id)
         )
         
-        # Добавляем условия поиска
+        
         conditions = []
         
-        # Текстовый поиск по названию трека
+        
         if search_query.query:
             conditions.append(
                 or_(
@@ -120,7 +120,7 @@ class TrackService:
                 )
             )
         
-        # Фильтры
+        
         if search_query.artist:
             conditions.append(Artist.name.ilike(f"%{search_query.artist}%"))
         
@@ -136,23 +136,23 @@ class TrackService:
         if search_query.duration_to:
             conditions.append(Track.duration_ms <= search_query.duration_to)
         
-        # Применяем условия
+        
         if conditions:
             base_query = base_query.where(and_(*conditions))
         
-        # Запрос для подсчета общего количества
+        
         count_query = select(func.count()).select_from(
             base_query.subquery()
         )
         total_result = await self.db.execute(count_query)
         total = total_result.scalar()
         
-        # Основной запрос с пагинацией
+        
         query = base_query.offset(search_query.offset).limit(search_query.limit)
         result = await self.db.execute(query)
         rows = result.all()
         
-        # Формируем результат
+        
         tracks = []
         for row in rows:
             track = row[0]
