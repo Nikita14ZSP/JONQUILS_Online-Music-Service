@@ -19,13 +19,12 @@ class AnalyticsService:
     
     def __init__(self, db: AsyncSession):
         self.db = db
-        # Для демонстрации пока без ClickHouse, позже добавим
-        # self.clickhouse_client = Client(...)
+        
     
     async def record_listening_event(self, event: ListeningEvent) -> bool:
         """Записывает событие прослушивания в PostgreSQL"""
         try:
-            # Сохраняем в PostgreSQL для реляционных запросов
+         
             db_event = ListeningHistory(
                 user_id=event.user_id,
                 track_id=event.track_id,
@@ -46,7 +45,7 @@ class AnalyticsService:
     async def get_track_analytics(self, track_id: int, days: int = 30) -> Optional[TrackAnalytics]:
         """Получение аналитики по треку"""
         try:
-            # Получаем информацию о треке
+           
             track_query = (
                 select(Track, Artist.name.label("artist_name"))
                 .join(Artist, Track.artist_id == Artist.id)
@@ -60,11 +59,11 @@ class AnalyticsService:
             
             track, artist_name = track_row
             
-            # Аналитика из PostgreSQL
+            
             end_date = datetime.utcnow()
             start_date = end_date - timedelta(days=days)
             
-            # Общая статистика
+           
             stats_query = select(
                 func.count(ListeningHistory.id).label("total_plays"),
                 func.count(func.distinct(ListeningHistory.user_id)).label("unique_listeners"),
@@ -81,7 +80,7 @@ class AnalyticsService:
             stats_result = await self.db.execute(stats_query)
             stats = stats_result.first()
             
-            # Статистика по часам
+            
             hourly_query = select(
                 func.extract('hour', ListeningHistory.played_at).label("hour"),
                 func.count(ListeningHistory.id).label("plays")
@@ -96,7 +95,7 @@ class AnalyticsService:
             hourly_result = await self.db.execute(hourly_query)
             plays_by_hour = {int(row.hour): row.plays for row in hourly_result}
             
-            # Статистика по дням
+            
             daily_query = select(
                 func.date(ListeningHistory.played_at).label("date"),
                 func.count(ListeningHistory.id).label("plays")
@@ -133,7 +132,7 @@ class AnalyticsService:
             end_date = datetime.utcnow()
             start_date = end_date - timedelta(days=days)
             
-            # Общая статистика пользователя
+           
             user_stats_query = select(
                 func.sum(ListeningHistory.play_duration_ms).label("total_listening_time"),
                 func.count(ListeningHistory.id).label("total_plays"),
@@ -149,7 +148,7 @@ class AnalyticsService:
             user_stats_result = await self.db.execute(user_stats_query)
             user_stats = user_stats_result.first()
             
-            # Активность по часам
+         
             hourly_activity_query = select(
                 func.extract('hour', ListeningHistory.played_at).label("hour"),
                 func.count(ListeningHistory.id).label("plays")
@@ -164,8 +163,7 @@ class AnalyticsService:
             hourly_result = await self.db.execute(hourly_activity_query)
             activity_by_hour = {int(row.hour): row.plays for row in hourly_result}
             
-            # Любимые жанры и исполнители
-            # Эти запросы упрощены для демонстрации
+            
             favorite_genres = []
             favorite_artists = []
             
@@ -188,7 +186,7 @@ class AnalyticsService:
             end_date = datetime.utcnow()
             start_date = end_date - timedelta(days=days)
             
-            # Общие метрики
+            
             total_users_query = select(func.count(User.id))
             total_users_result = await self.db.execute(total_users_query)
             total_users = total_users_result.scalar() or 0
@@ -201,7 +199,7 @@ class AnalyticsService:
             total_artists_result = await self.db.execute(total_artists_query)
             total_artists = total_artists_result.scalar() or 0
             
-            # Активные пользователи
+           
             today = datetime.utcnow().date()
             week_ago = today - timedelta(days=7)
             month_ago = today - timedelta(days=30)
@@ -230,7 +228,7 @@ class AnalyticsService:
             plays_today_result = await self.db.execute(plays_today_query)
             plays_today = plays_today_result.scalar() or 0
             
-            # Топ треков
+          
             top_tracks_data = await self.get_top_tracks(limit=10, days=days)
             
             return PlatformAnalytics(
@@ -277,7 +275,7 @@ class AnalyticsService:
             
             track_analytics = []
             for row in top_tracks_result:
-                # Получаем информацию о треке
+                
                 track_query = (
                     select(Track, Artist.name.label("artist_name"))
                     .join(Artist, Track.artist_id == Artist.id)
