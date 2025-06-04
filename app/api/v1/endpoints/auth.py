@@ -93,7 +93,6 @@ async def register(
     """
     Регистрация нового пользователя.
     """
-    # Проверяем, что пользователь с таким email или username не существует
     existing_user_email = await user_service.get_user_by_email(email=register_data.email)
     if existing_user_email:
         raise HTTPException(
@@ -108,15 +107,6 @@ async def register(
             detail="User with this username already exists"
         )
     
-    # Создаем пользователя
-    # user_create = UserCreate(
-    #     username=register_data.username,
-    #     email=register_data.email,
-    #     password=register_data.password,
-    #     full_name=register_data.full_name
-    # )
-    
-    # return await user_service.create_user(user_data=user_create)
     return await user_service.create_user(user_data=register_data)
 
 @router.post("/refresh", response_model=Token, summary="Обновление токена")
@@ -145,6 +135,5 @@ async def read_users_me(
     """
     Получить информацию о текущем аутентифицированном пользователе.
     """
-    # Получаем полную информацию о пользователе с загруженным профилем артиста
     user_with_profile = await user_service.get_user_with_artist_profile(current_user.id)
     return user_with_profile if user_with_profile else current_user
