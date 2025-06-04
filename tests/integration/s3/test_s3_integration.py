@@ -1,8 +1,3 @@
-"""
-Интеграционные тесты для S3 сервиса
-Тестируют взаимодействие с MinIO/S3 хранилищем
-"""
-
 import pytest
 import pytest_asyncio
 from unittest.mock import patch, AsyncMock
@@ -21,11 +16,9 @@ class TestS3Integration:
     @pytest_asyncio.fixture
     async def s3_service(self):
         """Фикстура S3 сервиса с моком"""
-        # Используем мок для тестов вместо реального S3
         with patch('app.services.s3_service.S3Service') as mock_s3:
             service = S3Service()
             
-            # Настраиваем mock методы
             mock_s3.upload_track.return_value = {
                 'success': True,
                 's3_key': 'test/track.mp3',
@@ -70,7 +63,6 @@ class TestS3Integration:
         with open(temp_audio_file, 'rb') as file:
             file_data = file.read()
         
-        # Мокаем загрузку
         with patch.object(s3_service, 'upload_track') as mock_upload:
             mock_upload.return_value = {
                 'success': True,
@@ -197,7 +189,6 @@ class TestS3Integration:
         """Тест операций с bucket'ами"""
         bucket_name = "test-bucket"
         
-        # Тест создания bucket
         with patch.object(s3_service, 'create_bucket') as mock_create:
             mock_create.return_value = True
             
@@ -205,7 +196,6 @@ class TestS3Integration:
             assert result is True
             mock_create.assert_called_once_with(bucket_name)
         
-        # Тест проверки существования bucket
         with patch.object(s3_service, 'bucket_exists') as mock_exists:
             mock_exists.return_value = True
             
@@ -215,8 +205,7 @@ class TestS3Integration:
 
     async def test_file_validation(self, s3_service):
         """Тест валидации файлов"""
-        # Тест валидации аудио файла
-        valid_audio_data = b"ID3\x03\x00" + b"\x00" * 1000  # Фиктивный MP3
+        valid_audio_data = b"ID3\x03\x00" + b"\x00" * 1000 
         invalid_audio_data = b"invalid audio data"
         
         with patch.object(s3_service, 'validate_audio_file') as mock_validate:
@@ -225,8 +214,7 @@ class TestS3Integration:
             assert s3_service.validate_audio_file(valid_audio_data) is True
             assert s3_service.validate_audio_file(invalid_audio_data) is False
         
-        # Тест валидации изображения
-        valid_image_data = b"\xff\xd8\xff\xe0"  # JPEG header
+        valid_image_data = b"\xff\xd8\xff\xe0"  
         invalid_image_data = b"invalid image data"
         
         with patch.object(s3_service, 'validate_image_file') as mock_validate:
@@ -252,23 +240,20 @@ class TestS3Integration:
     @pytest.mark.slow
     async def test_large_file_upload(self, s3_service):
         """Тест загрузки больших файлов"""
-        # Создаем большой временный файл (имитация)
-        large_file_size = 10 * 1024 * 1024  # 10MB
+        large_file_size = 10 * 1024 * 1024  
         user_id = 1
         track_id = "large_track_123"
         
         with patch.object(s3_service, 'upload_track') as mock_upload:
-            # Имитируем успешную загрузку большого файла
             mock_upload.return_value = {
                 'success': True,
                 's3_key': f'tracks/{user_id}/{track_id}.mp3',
                 'bucket': 'tracks',
                 'file_size': large_file_size,
                 'url': f'http://test.s3.com/tracks/{user_id}/{track_id}.mp3',
-                'upload_time': 2.5  # секунды
+                'upload_time': 2.5  
             }
             
-            # Имитируем данные большого файла
             large_file_data = b"0" * large_file_size
             
             result = s3_service.upload_track(
@@ -304,11 +289,9 @@ class TestS3Integration:
                     track_id=f"track_{track_num}"
                 )
         
-        # Запускаем несколько загрузок параллельно
         tasks = [upload_track(i) for i in range(5)]
         results = await asyncio.gather(*tasks)
         
-        # Проверяем, что все загрузки успешны
         assert len(results) == 5
         assert all(result['success'] for result in results)
-        assert len(set(result['s3_key'] for result in results)) == 5  # Уникальные ключи
+        assert len(set(result['s3_key'] for result in results)) == 5  
