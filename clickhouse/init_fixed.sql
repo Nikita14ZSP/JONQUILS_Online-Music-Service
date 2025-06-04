@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS track_analytics (
     track_id UInt64,
     artist_id UInt64,
     user_id UInt64 DEFAULT 0,
-    action String, -- 'play', 'pause', 'skip', 'like', 'download'
+    action String, -- ('play', 'pause', 'skip', 'like', 'download')
     duration_played_ms UInt32 DEFAULT 0,
     track_position_ms UInt32 DEFAULT 0,
     platform String DEFAULT 'web',
@@ -51,9 +51,9 @@ CREATE TABLE IF NOT EXISTS search_analytics (
     user_id UInt64 DEFAULT 0,
     query String,
     results_count UInt32,
-    search_type String, -- 'tracks', 'artists', 'albums', 'all'
+    search_type String, -- ('tracks', 'artists', 'albums', 'all')
     clicked_result_id UInt64 DEFAULT 0,
-    clicked_result_type String DEFAULT '', -- 'track', 'artist', 'album'
+    clicked_result_type String DEFAULT '', -- ('track', 'artist', 'album')
     session_id String DEFAULT '',
     date Date DEFAULT toDate(timestamp)
 ) ENGINE = MergeTree()
@@ -65,7 +65,7 @@ TTL date + INTERVAL 1 YEAR;
 CREATE TABLE IF NOT EXISTS user_analytics (
     timestamp DateTime DEFAULT now(),
     user_id UInt64,
-    action String, -- 'login', 'logout', 'register', 'profile_update'
+    action String, -- ('login', 'logout', 'register', 'profile_update')
     session_duration_minutes UInt32 DEFAULT 0,
     pages_visited UInt32 DEFAULT 1,
     tracks_played UInt32 DEFAULT 0,
@@ -81,8 +81,8 @@ TTL date + INTERVAL 2 YEARS;
 CREATE TABLE IF NOT EXISTS artist_analytics (
     timestamp DateTime DEFAULT now(),
     artist_id UInt64,
-    action String, -- 'track_upload', 'album_create', 'profile_update', 'track_delete'
-    target_id UInt64 DEFAULT 0, -- ID трека/альбома при соответствующих действиях
+    action String, -- ('track_upload', 'album_create', 'profile_update', 'track_delete')
+    target_id UInt64 DEFAULT 0, 
     metadata_key String DEFAULT '',
     metadata_value String DEFAULT '',
     date Date DEFAULT toDate(timestamp)
