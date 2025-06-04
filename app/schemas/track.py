@@ -10,7 +10,7 @@ class TrackBase(BaseModel):
     preview_url: Optional[str] = Field(None, description="URL превью трека")
     file_path: Optional[str] = Field(None, description="Локальный путь к файлу трека")
     
-    # Аудио характеристики
+    
     tempo: Optional[float] = Field(None, description="Темп в BPM")
     energy: Optional[float] = Field(None, ge=0.0, le=1.0, description="Энергетика 0.0-1.0")
     valence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Позитивность 0.0-1.0")
@@ -60,7 +60,7 @@ class TrackWithDetails(TrackInDBBase):
     artist_image_url: Optional[str] = None
     album_cover_url: Optional[str] = None
 
-# Схемы для поиска
+
 class TrackSearchQuery(BaseModel):
     query: str = Field(..., description="Поисковый запрос")
     artist: Optional[str] = Field(None, description="Фильтр по исполнителю")
@@ -79,7 +79,7 @@ class TrackSearchResponse(BaseModel):
     limit: int
     offset: int
 
-# Схемы для загрузки треков по URL
+
 class TrackUploadFromURL(BaseModel):
     title: str = Field(..., description="Название трека")
     file_url: str = Field(..., description="URL аудиофайла для загрузки")
@@ -95,7 +95,7 @@ class TrackUploadResponse(BaseModel):
     track_id: Optional[int] = None
     track: Optional[Track] = None
 
-# Схемы для загрузки локальных файлов
+
 class TrackUploadFromFile(BaseModel):
     title: str = Field(..., description="Название трека")
     artist_id: int = Field(..., description="ID исполнителя")
