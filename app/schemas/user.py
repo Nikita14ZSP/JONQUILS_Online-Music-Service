@@ -6,7 +6,7 @@ class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="Имя пользователя")
     email: EmailStr = Field(..., description="Email пользователя")
     full_name: Optional[str] = Field(None, max_length=255, description="Полное имя пользователя")
-    role: str = "listener" # Добавлено поле role
+    role: str = "listener" 
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, description="Пароль пользователя")
@@ -29,18 +29,18 @@ class UserInDBBase(UserBase):
         from_attributes = True
 
 class User(UserInDBBase):
-    artist_profile_id: Optional[int] = None # ID связанного профиля артиста
+    artist_profile_id: Optional[int] = None 
 
     class Config:
         from_attributes = True
 
 class UserProfile(UserInDBBase):
     """Профиль пользователя с дополнительной информацией"""
-    total_listening_time: int = 0  # В миллисекундах
+    total_listening_time: int = 0  
     favorite_genres: list[str] = []
     total_playlists: int = 0
 
-# Схемы для аутентификации
+
 class UserLogin(BaseModel):
     username: str = Field(..., description="Имя пользователя или email")
     password: str = Field(..., description="Пароль")
