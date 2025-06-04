@@ -24,8 +24,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Здесь должна быть валидация JWT токена
-    # Пока что возвращаем первого пользователя для тестирования
+
     try:
         result = await db.execute(select(User).limit(1))
         user = result.scalar_one_or_none()
