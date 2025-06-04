@@ -40,7 +40,6 @@ async def initialize_clickhouse():
     try:
         from app.services.clickhouse_service import clickhouse_service
         
-        # Создаем таблицы ClickHouse
         await clickhouse_service.create_tables()
         logger.info("ClickHouse tables initialized successfully")
     except Exception as e:
