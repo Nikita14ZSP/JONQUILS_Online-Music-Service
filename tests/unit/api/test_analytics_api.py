@@ -1,8 +1,3 @@
-"""
-Unit тесты для аналитических API эндпоинтов
-Тестируют логику без внешних зависимостей
-"""
-
 import pytest
 from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient
@@ -18,25 +13,21 @@ class TestAnalyticsAPI:
     @pytest.mark.api
     async def test_get_popular_tracks_success(self, auth_client: AsyncClient):
         """Тест получения популярных треков"""
-        # Подготовка
         mock_clickhouse = MockServiceBuilder.clickhouse_service()
         
         with patch('app.api.v1.endpoints.analytics.clickhouse_service', mock_clickhouse):
             api_helper = ApiTestHelper(auth_client)
             
-            # Выполнение
             response = await auth_client.get("/api/v1/analytics/popular-tracks?limit=10")
             
-            # Проверка
             await api_helper.assert_status(response, 200)
             data = response.json()
             
             assert "success" in data
             assert data["success"] is True
             assert "data" in data
-            assert len(data["data"]) == 2  # Из мока
-            
-            # Проверяем структуру данных
+            assert len(data["data"]) == 2  
+
             track = data["data"][0]
             assert "track_id" in track
             assert "play_count" in track
@@ -55,7 +46,6 @@ class TestAnalyticsAPI:
             )
             
             assert response.status_code == 200
-            # Проверяем что мок был вызван с правильными параметрами
             mock_clickhouse.get_popular_tracks.assert_called_once()
     
     @pytest.mark.unit
@@ -90,7 +80,6 @@ class TestAnalyticsAPI:
     @pytest.mark.api
     async def test_get_user_stats_forbidden(self, auth_client: AsyncClient):
         """Тест запрета доступа к чужой статистике"""
-        # Пытаемся получить статистику другого пользователя
         response = await auth_client.get("/api/v1/analytics/user/999/stats")
         
         assert response.status_code == 403
@@ -122,7 +111,6 @@ class TestAnalyticsAPI:
                 "message": "Событие записано"
             })
             
-            # Проверяем что мок был вызван
             mock_clickhouse.record_listening_event.assert_called_once()
     
     @pytest.mark.unit
@@ -131,7 +119,6 @@ class TestAnalyticsAPI:
         """Тест записи события с невалидными данными"""
         api_helper = ApiTestHelper(auth_client)
         
-        # Отправляем невалидные данные (отсутствует track_id)
         invalid_data = {
             "event_type": "play",
             "duration": 180
@@ -139,7 +126,7 @@ class TestAnalyticsAPI:
         
         response = await api_helper.post_json("/api/v1/analytics/listening-events", invalid_data)
         
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422  
     
     @pytest.mark.unit
     @pytest.mark.api
@@ -227,7 +214,6 @@ class TestAnalyticsAPI:
         mock_clickhouse = MockServiceBuilder.clickhouse_service()
         
         with patch('app.api.v1.endpoints.analytics.clickhouse_service', mock_clickhouse):
-            # Тестируем несколько эндпоинтов на производительность
             endpoints = [
                 "/api/v1/analytics/popular-tracks?limit=10",
                 "/api/v1/analytics/genres/stats",
@@ -240,7 +226,6 @@ class TestAnalyticsAPI:
                 
                 response, duration = await PerformanceTestHelper.measure_async_time(make_request())
                 
-                # Проверяем что ответ быстрый (менее 500ms для unit тестов)
                 PerformanceTestHelper.assert_performance(
                     duration, 0.5, f"GET {endpoint}"
                 )
@@ -270,7 +255,7 @@ class TestAnalyticsAPIErrorHandling:
         """Тест с невалидным форматом user_id"""
         response = await auth_client.get("/api/v1/analytics/user/invalid_id/stats")
         
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422  
     
     @pytest.mark.unit
     @pytest.mark.api
@@ -278,7 +263,7 @@ class TestAnalyticsAPIErrorHandling:
         """Тест с отрицательным параметром limit"""
         response = await auth_client.get("/api/v1/analytics/popular-tracks?limit=-5")
         
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422  
     
     @pytest.mark.unit
     @pytest.mark.api
@@ -289,7 +274,6 @@ class TestAnalyticsAPIErrorHandling:
         with patch('app.api.v1.endpoints.analytics.clickhouse_service', mock_clickhouse):
             response = await auth_client.get("/api/v1/analytics/popular-tracks?limit=10000")
             
-            # Должен ограничиться максимальным значением
             assert response.status_code == 200
 
 
@@ -309,7 +293,7 @@ class TestAnalyticsAPIAuthentication:
         
         for endpoint in endpoints:
             response = await async_client.get(endpoint)
-            assert response.status_code == 401  # Unauthorized
+            assert response.status_code == 401  
     
     @pytest.mark.unit
     @pytest.mark.api
@@ -325,10 +309,8 @@ class TestAnalyticsAPIAuthentication:
         
         with patch('app.api.v1.endpoints.analytics.clickhouse_service', mock_clickhouse):
             for endpoint in admin_endpoints:
-                # Обычный пользователь не должен иметь доступ
                 response = await auth_client.get(endpoint)
-                assert response.status_code in [403, 404]  # Forbidden or Not Found
+                assert response.status_code in [403, 404] 
                 
-                # Админ должен иметь доступ
                 response = await admin_client.get(endpoint)
                 assert response.status_code == 200
