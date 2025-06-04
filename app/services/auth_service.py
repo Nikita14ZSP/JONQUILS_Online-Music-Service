@@ -10,10 +10,10 @@ from app.services.user_service import UserService
 from app.schemas.auth import TokenData
 from app.db.models import User
 
-# Настройка паролей
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Алгоритм для JWT
+
 ALGORITHM = "HS256"
 
 
@@ -32,7 +32,7 @@ class AuthService:
 
     async def authenticate_user(self, username: str, password: str) -> Optional[User]:
         """Аутентификация пользователя."""
-        # Попытка найти по username или email
+        
         user = await self.user_service.get_user_by_username(username)
         if not user:
             user = await self.user_service.get_user_by_email(username)
