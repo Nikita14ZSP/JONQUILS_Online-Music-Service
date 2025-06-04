@@ -24,7 +24,7 @@ class S3Service:
         self.secret_key = os.getenv('S3_SECRET_KEY', 'minioadmin123')
         self.region = os.getenv('S3_REGION', 'us-east-1')
         
-        # Конфигурация для работы с MinIO
+        
         config = Config(
             region_name=self.region,
             retries={'max_attempts': 3, 'mode': 'adaptive'},
@@ -39,7 +39,7 @@ class S3Service:
             config=config
         )
         
-        # Bucket names
+        
         self.tracks_bucket = 'tracks'
         self.covers_bucket = 'covers'
         self.playlists_bucket = 'playlists'
@@ -77,18 +77,18 @@ class S3Service:
             Dict с информацией о загруженном файле
         """
         try:
-            # Генерируем уникальный ключ для файла
+           
             timestamp = datetime.now().strftime('%Y/%m/%d')
             file_hash = hashlib.md5(file_content.read()).hexdigest()[:8]
-            file_content.seek(0)  # Возвращаемся в начало файла
+            file_content.seek(0)  
             
             file_extension = os.path.splitext(filename)[1]
             s3_key = f"users/{user_id}/{timestamp}/{file_hash}_{filename}"
             
-            # Определяем MIME тип
+           
             content_type = mimetypes.guess_type(filename)[0] or 'audio/mpeg'
             
-            # Подготавливаем метаданные
+            
             upload_metadata = {
                 'user-id': str(user_id),
                 'original-filename': filename,
@@ -99,7 +99,7 @@ class S3Service:
             if metadata:
                 upload_metadata.update({f'custom-{k}': str(v) for k, v in metadata.items()})
             
-            # Загружаем файл
+            
             self.client.upload_fileobj(
                 file_content,
                 self.tracks_bucket,
@@ -111,7 +111,7 @@ class S3Service:
                 }
             )
             
-            # Получаем размер файла
+            
             response = self.client.head_object(Bucket=self.tracks_bucket, Key=s3_key)
             file_size = response['ContentLength']
             
@@ -142,7 +142,7 @@ class S3Service:
             file_hash = hashlib.md5(file_content.read()).hexdigest()[:8]
             file_content.seek(0)
             
-            # Определяем путь в зависимости от типа
+            
             if track_id:
                 s3_key = f"tracks/{track_id}/{timestamp}/{file_hash}_{filename}"
             elif album_id:
@@ -169,7 +169,7 @@ class S3Service:
                 ExtraArgs={
                     'ContentType': content_type,
                     'Metadata': metadata,
-                    'ACL': 'public-read'  # Обложки доступны публично
+                    'ACL': 'public-read'  
                 }
             )
             
@@ -240,7 +240,7 @@ class S3Service:
             
             tracks = []
             for obj in response.get('Contents', []):
-                # Получаем метаданные для каждого файла
+                
                 metadata = self.get_track_metadata(obj['Key'])
                 if metadata:
                     tracks.append({
@@ -325,5 +325,5 @@ class S3Service:
             logger.error(f"Error cleaning up temp files: {e}")
             return 0
 
-# Singleton instance
+
 s3_service = S3Service()
