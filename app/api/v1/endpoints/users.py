@@ -35,7 +35,6 @@ async def create_user(
     """
     Создать нового пользователя.
     """
-    # Проверяем, что пользователь с таким email не существует
     existing_user = await user_service.get_user_by_email(email=user_in.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
