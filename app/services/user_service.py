@@ -2,13 +2,13 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from fastapi import HTTPException, status # Импортируем HTTPException
+from fastapi import HTTPException, status 
 
-from app.db.models import User, Artist, UserPreference # Импортируем UserPreference
+from app.db.models import User, Artist, UserPreference 
 from app.schemas.user import UserCreate, UserUpdate
-# app.schemas.auth.RegisterRequest используется для тайп-хинтинга в create_user, импортируем его
+
 from app.schemas.auth import RegisterRequest as RegisterRequestSchema
-from app.schemas.artist import ArtistCreate # Для создания артиста
+from app.schemas.artist import ArtistCreate 
 
 
 class UserService:
@@ -39,7 +39,7 @@ class UserService:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def create_user(self, user_data: RegisterRequestSchema) -> User: # Изменяем тип user_data
+    async def create_user(self, user_data: RegisterRequestSchema) -> User:
         """Создать нового пользователя и, если это артист, его профиль."""
         from passlib.context import CryptContext
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -51,26 +51,26 @@ class UserService:
             email=user_data.email,
             hashed_password=hashed_password,
             full_name=user_data.full_name,
-            role=user_data.role, # Добавляем роль
+            role=user_data.role, 
             is_active=True
         )
         
         self.db.add(db_user)
-        await self.db.flush() # Используем flush, чтобы получить ID пользователя для связи с артиста
+        await self.db.flush() 
 
         if user_data.role == "artist":
             if not user_data.artist_name:
-                await self.db.rollback() # Откатываем транзакцию, если имя артиста не предоставлено
+                await self.db.rollback() 
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Artist name is required for artist role."
                 )
             
-            # Убедимся, что artist_profile_data создается корректно
+            
             artist_create_data = {
                 "name": user_data.artist_name
             }
-            if user_data.bio is not None: # Добавляем поля только если они есть
+            if user_data.bio is not None: 
                 artist_create_data["bio"] = user_data.bio
             if user_data.country is not None:
                 artist_create_data["country"] = user_data.country
@@ -80,14 +80,14 @@ class UserService:
             artist_profile_data = ArtistCreate(**artist_create_data)
             
             db_artist = Artist(
-                **artist_profile_data.model_dump(exclude_unset=True), # Используем exclude_unset
-                user_id=db_user.id  # Связываем артиста с пользователем
+                **artist_profile_data.model_dump(exclude_unset=True), 
+                user_id=db_user.id  
             )
             self.db.add(db_artist)
         
         await self.db.commit()
         await self.db.refresh(db_user)
-        # Загружаем связанный профиль артиста, если он был создан
+        
         if db_user.role == "artist":
             await self.db.refresh(db_user, relationship_names=["artist_profile"])
 
@@ -104,7 +104,7 @@ class UserService:
         
         update_data = user_data.dict(exclude_unset=True)
         
-        # Если обновляется пароль, хешируем его
+        
         if "password" in update_data:
             from passlib.context import CryptContext
             pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -178,7 +178,7 @@ class UserService:
         if not user:
             return None
             
-        # Если у пользователя есть профиль артиста, добавляем artist_profile_id в ответ
+        
         if user.artist_profile:
             user.artist_profile_id = user.artist_profile.id
             
