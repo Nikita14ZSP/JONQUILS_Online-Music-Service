@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.album import Album, AlbumCreate, AlbumUpdate
 from app.services.album_service import AlbumService
+from app.services.artist_service import ArtistService
 from app.services.search_service import SearchService
 from app.db.database import get_db
 
@@ -11,6 +12,9 @@ router = APIRouter()
 
 async def get_album_service(db: AsyncSession = Depends(get_db)) -> AlbumService:
     return AlbumService(db)
+
+async def get_artist_service(db: AsyncSession = Depends(get_db)) -> ArtistService:
+    return ArtistService(db)
 
 async def get_search_service(db: AsyncSession = Depends(get_db)) -> SearchService:
     return SearchService(db)
@@ -31,6 +35,7 @@ async def read_albums(
 async def create_album(
     album_in: AlbumCreate = Body(...),
     album_service: AlbumService = Depends(get_album_service),
+    artist_service: ArtistService = Depends(get_artist_service),
     search_service: SearchService = Depends(get_search_service)
 ):
     """
@@ -39,7 +44,7 @@ async def create_album(
     created_album = await album_service.create_album(album_data=album_in)
     
     if created_album:
-        artist = await album_service.db.get_artist_by_id(created_album.artist_id)
+        artist = await artist_service.get_artist_by_id(created_album.artist_id)
         artist_name = artist.name if artist else ""
         await search_service.index_album(album=created_album, artist_name=artist_name)
     

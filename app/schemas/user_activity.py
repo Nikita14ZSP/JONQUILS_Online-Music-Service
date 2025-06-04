@@ -38,8 +38,8 @@ class TrackAnalytics(BaseModel):
     unique_listeners: int = 0
     average_completion_rate: float = 0.0
     total_listening_time_ms: int = 0
-    plays_by_hour: Dict[int, int] = {}  # час -> количество воспроизведений
-    plays_by_day: Dict[str, int] = {}   # дата -> количество воспроизведений
+    plays_by_hour: Dict[int, int] = {} 
+    plays_by_day: Dict[str, int] = {}   
 
 class UserAnalytics(BaseModel):
     """Аналитика пользователя"""

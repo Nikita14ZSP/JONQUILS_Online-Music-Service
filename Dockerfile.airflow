@@ -1,0 +1,57 @@
+# Кастомный Airflow образ с необходимыми зависимостями
+FROM apache/airflow:2.7.0-python3.11
+
+# Переключаемся на root для установки системных пакетов
+USER root
+
+# Устанавливаем системные зависимости
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Переключаемся обратно на airflow пользователя
+USER airflow
+
+# Копируем общий requirements
+COPY requirements.txt /tmp/airflow-requirements.txt
+
+# Устанавливаем только необходимые зависимости для Airflow ETL
+RUN pip install --no-cache-dir \
+    boto3==1.38.29 \
+    pandas==2.2.3 \
+    clickhouse-driver==0.2.9 \
+    requests==2.32.3 \
+    psycopg2-binary==2.9.10
+
+# Переключаемся на root для создания директорий
+USER root
+
+# Создаем необходимые директории с правильными правами
+RUN mkdir -p /opt/airflow/logs/scheduler \
+    && mkdir -p /opt/airflow/logs/dag_processor_manager \
+    && mkdir -p /opt/airflow/logs/dag_processor \
+    && mkdir -p /opt/airflow/plugins \
+    && mkdir -p /opt/airflow/scripts
+
+# Копируем entrypoint скрипт
+COPY airflow/scripts/airflow-entrypoint.sh /opt/airflow/scripts/airflow-entrypoint.sh
+
+# Устанавливаем права доступа для airflow пользователя (UID 50000)
+RUN chmod +x /opt/airflow/scripts/airflow-entrypoint.sh \
+    && chown -R 50000:0 /opt/airflow/ \
+    && chmod -R 755 /opt/airflow/logs \
+    && chmod -R 775 /opt/airflow/plugins \
+    && chmod -R 775 /opt/airflow/scripts
+
+# Переключаемся обратно на airflow пользователя
+USER airflow
+
+# Устанавливаем рабочую директорию
+WORKDIR /opt/airflow
+
+# Устанавливаем переменные окружения
+ENV AIRFLOW_HOME=/opt/airflow
+ENV PYTHONPATH=/opt/airflow
