@@ -98,7 +98,7 @@ class TrackService:
     
     async def search_tracks(self, search_query: TrackSearchQuery) -> tuple[List[TrackWithDetails], int]:
         """Поиск треков с фильтрацией"""
-        # Базовый запрос с джойнами
+        
         base_query = (
             select(
                 Track,
@@ -113,10 +113,10 @@ class TrackService:
             .outerjoin(Genre, Track.genre_id == Genre.id)
         )
         
-        # Добавляем условия поиска
+        
         conditions = []
         
-        # Текстовый поиск по названию трека
+        
         if search_query.query:
             conditions.append(
                 or_(
@@ -126,7 +126,7 @@ class TrackService:
                 )
             )
         
-        # Фильтры
+        
         if search_query.artist:
             conditions.append(Artist.name.ilike(f"%{search_query.artist}%"))
         
@@ -142,23 +142,23 @@ class TrackService:
         if search_query.duration_to:
             conditions.append(Track.duration_ms <= search_query.duration_to)
         
-        # Применяем условия
+        
         if conditions:
             base_query = base_query.where(and_(*conditions))
         
-        # Запрос для подсчета общего количества
+        
         count_query = select(func.count()).select_from(
             base_query.subquery()
         )
         total_result = await self.db.execute(count_query)
         total = total_result.scalar()
         
-        # Основной запрос с пагинацией
+       
         query = base_query.offset(search_query.offset).limit(search_query.limit)
         result = await self.db.execute(query)
         rows = result.all()
         
-        # Формируем результат
+       
         tracks = []
         for row in rows:
             track = row[0]
@@ -230,7 +230,7 @@ class TrackService:
     async def upload_track_from_url(self, track_data: TrackUploadFromURL) -> tuple[bool, str, Optional[Track]]:
         """Загрузка трека по URL"""
         try:
-            # Проверяем, существует ли уже трек с таким URL
+          
             existing_track_query = select(Track).where(Track.file_url == track_data.file_url)
             existing_result = await self.db.execute(existing_track_query)
             existing_track = existing_result.scalar_one_or_none()
@@ -238,13 +238,13 @@ class TrackService:
             if existing_track:
                 return False, "Трек с таким URL уже существует", existing_track
             
-            # Проверяем доступность URL
+            
             try:
                 response = requests.head(track_data.file_url, timeout=10)
                 if response.status_code != 200:
                     return False, f"URL недоступен (статус: {response.status_code})", None
                 
-                # Проверяем, что это аудиофайл
+                
                 content_type = response.headers.get('content-type', '').lower()
                 if not any(audio_type in content_type for audio_type in ['audio/', 'application/ogg']):
                     return False, f"Файл по URL не является аудиофайлом (тип: {content_type})", None
@@ -252,7 +252,7 @@ class TrackService:
             except requests.RequestException as e:
                 return False, f"Ошибка при проверке URL: {str(e)}", None
             
-            # Проверяем существование связанных объектов
+            
             artist_query = select(Artist).where(Artist.id == track_data.artist_id)
             artist_result = await self.db.execute(artist_query)
             artist = artist_result.scalar_one_or_none()
@@ -276,7 +276,7 @@ class TrackService:
                 if not genre:
                     return False, f"Жанр с ID {track_data.genre_id} не найден", None
             
-            # Создаем новый трек
+            
             db_track = Track(
                 title=track_data.title,
                 artist_id=track_data.artist_id,
@@ -285,7 +285,7 @@ class TrackService:
                 file_url=track_data.file_url,
                 explicit=track_data.explicit,
                 preview_url=track_data.preview_url,
-                popularity=0  # Начальная популярность
+                popularity=0  
             )
             
             self.db.add(db_track)
@@ -298,7 +298,7 @@ class TrackService:
             await self.db.rollback()
             return False, f"Ошибка при загрузке трека: {str(e)}", None
     
-    # Методы для работы с локальными файлами
+  
     
     async def get_track_by_id(self, track_id: int) -> Optional[Track]:
         """Получение трека по ID (алиас для get_track)"""
@@ -307,7 +307,7 @@ class TrackService:
     async def upload_track_from_file(self, track_data: TrackUploadFromFile, file_content: bytes, filename: str) -> tuple[bool, str, Optional[Track]]:
         """Загрузка трека из локального файла"""
         try:
-            # Проверяем существование связанных объектов
+            
             artist_query = select(Artist).where(Artist.id == track_data.artist_id)
             artist_result = await self.db.execute(artist_query)
             artist = artist_result.scalar_one_or_none()
@@ -331,26 +331,26 @@ class TrackService:
                 if not genre:
                     return False, f"Жанр с ID {track_data.genre_id} не найден", None
             
-            # Проверяем формат файла
+           
             allowed_extensions = ['.mp3', '.wav', '.flac', '.m4a', '.ogg', '.aac']
             file_extension = Path(filename).suffix.lower()
             
             if file_extension not in allowed_extensions:
                 return False, f"Неподдерживаемый формат файла: {file_extension}. Поддерживаются: {', '.join(allowed_extensions)}", None
             
-            # Создаем директорию для хранения файлов, если её нет
+            
             upload_dir = Path("uploads/tracks")
             upload_dir.mkdir(parents=True, exist_ok=True)
             
-            # Генерируем уникальное имя файла
+            
             unique_filename = f"{uuid.uuid4()}{file_extension}"
             file_path = upload_dir / unique_filename
             
-            # Сохраняем файл
+           
             async with aiofiles.open(file_path, 'wb') as f:
                 await f.write(file_content)
             
-            # Создаем новый трек
+            
             db_track = Track(
                 title=track_data.title,
                 artist_id=track_data.artist_id,
@@ -359,7 +359,7 @@ class TrackService:
                 file_path=str(file_path),
                 explicit=track_data.explicit,
                 duration_ms=track_data.duration_ms,
-                popularity=0  # Начальная популярность
+                popularity=0  
             )
             
             self.db.add(db_track)
@@ -370,7 +370,7 @@ class TrackService:
             
         except Exception as e:
             await self.db.rollback()
-            # Удаляем файл в случае ошибки
+            
             if 'file_path' in locals() and file_path.exists():
                 file_path.unlink()
             return False, f"Ошибка при загрузке трека: {str(e)}", None
