@@ -1,8 +1,3 @@
-"""
-API эндпоинты для работы с S3 хранилищем
-Включает загрузку треков, обложек и управление файлами
-"""
-
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from fastapi.responses import RedirectResponse
 from typing import Optional, List, Dict, Any
@@ -25,7 +20,6 @@ async def upload_track(
     """
     Загрузка трека в S3
     """
-    # Проверяем тип файла
     allowed_types = ['audio/mpeg', 'audio/wav', 'audio/flac', 'audio/mp4', 'audio/m4a']
     if file.content_type not in allowed_types:
         raise HTTPException(
@@ -33,8 +27,7 @@ async def upload_track(
             detail=f"Неподдерживаемый тип файла. Разрешены: {', '.join(allowed_types)}"
         )
     
-    # Проверяем размер файла (максимум 100MB)
-    max_size = 100 * 1024 * 1024  # 100MB
+    max_size = 100 * 1024 * 1024  
     contents = await file.read()
     if len(contents) > max_size:
         raise HTTPException(
@@ -43,7 +36,6 @@ async def upload_track(
         )
     
     try:
-        # Загружаем файл в S3
         from io import BytesIO
         file_content = BytesIO(contents)
         
@@ -85,7 +77,6 @@ async def upload_cover(
     """
     Загрузка обложки в S3
     """
-    # Проверяем тип файла
     allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     if file.content_type not in allowed_types:
         raise HTTPException(
@@ -93,8 +84,7 @@ async def upload_cover(
             detail=f"Неподдерживаемый тип файла. Разрешены: {', '.join(allowed_types)}"
         )
     
-    # Проверяем размер файла (максимум 10MB)
-    max_size = 10 * 1024 * 1024  # 10MB
+    max_size = 10 * 1024 * 1024  
     contents = await file.read()
     if len(contents) > max_size:
         raise HTTPException(
@@ -145,7 +135,6 @@ async def get_user_tracks(
     """
     Получение списка треков пользователя
     """
-    # Проверяем права доступа
     if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Недостаточно прав")
     
@@ -169,18 +158,16 @@ async def get_user_tracks(
 async def get_track_url(
     s3_key: str,
     current_user: User = Depends(get_current_user),
-    expires_in: int = Query(3600, le=86400)  # Максимум 24 часа
+    expires_in: int = Query(3600, le=86400)  
 ) -> Dict[str, Any]:
     """
     Получение presigned URL для трека
     """
     try:
-        # Получаем метаданные трека для проверки прав
         metadata = s3_service.get_track_metadata(s3_key)
         if not metadata:
             raise HTTPException(status_code=404, detail="Трек не найден")
         
-        # Проверяем права доступа (базовая проверка)
         track_user_id = metadata.get('metadata', {}).get('user-id')
         if track_user_id and str(current_user.id) != track_user_id and current_user.role != "admin":
             raise HTTPException(status_code=403, detail="Недостаточно прав")
@@ -213,17 +200,14 @@ async def stream_track(
     Перенаправление на поток трека
     """
     try:
-        # Получаем метаданные трека для проверки прав
         metadata = s3_service.get_track_metadata(s3_key)
         if not metadata:
             raise HTTPException(status_code=404, detail="Трек не найден")
-        
-        # Проверяем права доступа
+    
         track_user_id = metadata.get('metadata', {}).get('user-id')
         if track_user_id and str(current_user.id) != track_user_id and current_user.role != "admin":
             raise HTTPException(status_code=403, detail="Недостаточно прав")
         
-        # Генерируем URL и перенаправляем
         url = s3_service.get_track_url(s3_key, expires_in=3600)
         
         if url:
@@ -246,12 +230,10 @@ async def delete_track(
     Удаление трека из S3
     """
     try:
-        # Получаем метаданные трека для проверки прав
         metadata = s3_service.get_track_metadata(s3_key)
         if not metadata:
             raise HTTPException(status_code=404, detail="Трек не найден")
         
-        # Проверяем права доступа
         track_user_id = metadata.get('metadata', {}).get('user-id')
         if track_user_id and str(current_user.id) != track_user_id and current_user.role != "admin":
             raise HTTPException(status_code=403, detail="Недостаточно прав")
@@ -295,7 +277,7 @@ async def get_storage_stats(
 @router.post("/maintenance/cleanup-temp")
 async def cleanup_temp_files(
     current_user: User = Depends(get_current_user),
-    older_than_hours: int = Query(24, ge=1, le=168)  # От 1 часа до недели
+    older_than_hours: int = Query(24, ge=1, le=168)  
 ) -> Dict[str, Any]:
     """
     Очистка временных файлов (только для администраторов)
@@ -327,7 +309,6 @@ async def s3_health_check() -> Dict[str, Any]:
     Проверка состояния S3 сервиса
     """
     try:
-        # Простая проверка - получаем статистику
         stats = s3_service.get_storage_stats()
         
         return {
