@@ -1,7 +1,3 @@
-"""
-Эндпоинты для аналитики артистов
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from typing import Dict, Any, Optional
 
